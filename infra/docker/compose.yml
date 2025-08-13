@@ -1,0 +1,89 @@
+version: '3.8'
+
+services:
+  web:
+    build:
+      context: ../../apps/web
+      dockerfile: Dockerfile
+    ports:
+      - "3000:3000"
+    environment:
+      - NODE_ENV=development
+      - NEXT_PUBLIC_API_URL=http://localhost:8787
+    volumes:
+      - ../../apps/web:/app
+      - /app/node_modules
+      - /app/.next
+    command: npm run dev
+    depends_on:
+      - api
+
+  api:
+    build:
+      context: ../../apps/api
+      dockerfile: Dockerfile
+    ports:
+      - "8787:8787"
+    environment:
+      - NODE_ENV=development
+      - PORT=8787
+      - DATA_DIR=/app/data
+      - TEMP_DIR=/app/temp
+    volumes:
+      - ../../apps/api:/app
+      - /app/node_modules
+      - api_data:/app/data
+      - api_temp:/app/temp
+    command: npm run dev
+
+  # Database (SQLite for development, PostgreSQL for production)
+  postgres:
+    image: postgres:15-alpine
+    environment:
+      POSTGRES_DB: one_to_multi_agent
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: password
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./init-db.sql:/docker-entrypoint-initdb.d/init-db.sql
+    profiles:
+      - production
+
+  # Redis for job queuing and caching
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    command: redis-server --appendonly yes
+    profiles:
+      - production
+
+  # File storage (MinIO as S3-compatible storage for development)
+  minio:
+    image: minio/minio:latest
+    ports:
+      - "9000:9000"
+      - "9001:9001"
+    environment:
+      MINIO_ROOT_USER: minioadmin
+      MINIO_ROOT_PASSWORD: minioadmin123
+    volumes:
+      - minio_data:/data
+    command: server /data --console-address ":9001"
+    profiles:
+      - storage
+
+volumes:
+  api_data:
+  api_temp:
+  postgres_data:
+  redis_data:
+  minio_data:
+
+networks:
+  default:
+    driver: bridge
