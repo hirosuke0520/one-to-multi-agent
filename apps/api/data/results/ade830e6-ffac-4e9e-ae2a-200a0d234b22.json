@@ -1,0 +1,52 @@
+{
+  "canonicalContent": {
+    "id": "892dc1a6-8504-46ca-a251-4f3feeb78c52",
+    "title": "新しいプロダクトの紹介",
+    "summary": "今回は革新的な新プロダクトについて紹介します。このツールはコンテンツ制作者にとって非常に価値があります。",
+    "fullText": "今日は新しいAIツールについて紹介します。このツールを使うことで、コンテンツ制作者が効率的に作業できるようになります。主な機能は音声認識、自動要約、複数プラットフォーム対応です。",
+    "keyPoints": [
+      "自動文字起こし機能",
+      "多言語対応",
+      "リアルタイム処理",
+      "高精度の音声認識",
+      "コンテンツ制作者向けのツール"
+    ],
+    "topics": [
+      "プロダクト紹介",
+      "AI技術",
+      "コンテンツ制作",
+      "音声認識"
+    ],
+    "metadata": {
+      "language": "ja",
+      "sourceType": "text"
+    }
+  },
+  "platformResults": [
+    {
+      "platform": "threads",
+      "success": true,
+      "result": {
+        "success": true,
+        "platform": "threads",
+        "url": "https://threads.net/@user/post/6d920695-f51c-4c65-83da-14139a0d0ed8",
+        "id": "6d920695-f51c-4c65-83da-14139a0d0ed8",
+        "status": "published",
+        "message": "Successfully posted to Threads",
+        "publishedAt": "2025-08-13T16:27:39.657Z"
+      }
+    },
+    {
+      "platform": "wordpress",
+      "success": true,
+      "result": {
+        "success": true,
+        "platform": "wordpress",
+        "url": "https://yoursite.com/wp-admin/post.php?post=1755102461859&action=edit",
+        "id": "1755102461859",
+        "status": "draft",
+        "message": "Draft created in WordPress"
+      }
+    }
+  ]
+}
