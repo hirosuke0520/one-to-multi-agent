@@ -8,6 +8,9 @@ export default function Home() {
   const [file, setFile] = useState<File | null>(null);
   const [targets, setTargets] = useState<string[]>([]);
   const [isProcessing, setIsProcessing] = useState(false);
+  const [jobId, setJobId] = useState<string | null>(null);
+  const [results, setResults] = useState<any>(null);
+  const [error, setError] = useState<string | null>(null);
 
   const handleTargetToggle = (target: string) => {
     setTargets(prev => 
@@ -27,13 +30,93 @@ export default function Home() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsProcessing(true);
+    setError(null);
+    setResults(null);
     
-    // TODO: Implement API call to process content
-    console.log({ sourceType, content, file, targets });
-    
-    // Simulate processing
-    await new Promise(resolve => setTimeout(resolve, 2000));
-    setIsProcessing(false);
+    try {
+      const apiUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8787";
+      
+      const payload = {
+        sourceType,
+        content: sourceType === "text" ? content : undefined,
+        targets,
+        profile: {
+          tone: "conversational",
+          audience: "general",
+          purpose: "inform"
+        }
+      };
+
+      const response = await fetch(`${apiUrl}/orchestrator/process`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(payload),
+      });
+
+      if (!response.ok) {
+        throw new Error(`API request failed: ${response.status}`);
+      }
+
+      const data = await response.json();
+      
+      if (data.success) {
+        setJobId(data.jobId);
+        // Poll for results
+        pollForResults(data.jobId);
+      } else {
+        throw new Error(data.error || "Failed to start processing");
+      }
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Unknown error occurred");
+      setIsProcessing(false);
+    }
+  };
+
+  const pollForResults = async (jobId: string) => {
+    const apiUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8787";
+    const maxAttempts = 30; // 5 minutes max
+    let attempts = 0;
+
+    const poll = async () => {
+      try {
+        attempts++;
+        const response = await fetch(`${apiUrl}/jobs/${jobId}`);
+        
+        if (!response.ok) {
+          throw new Error("Failed to fetch job status");
+        }
+
+        const jobData = await response.json();
+        
+        if (jobData.success && jobData.job.status === "completed") {
+          // Get results
+          const resultsResponse = await fetch(`${apiUrl}/jobs/${jobId}/results`);
+          if (resultsResponse.ok) {
+            const resultsData = await resultsResponse.json();
+            if (resultsData.success) {
+              setResults(resultsData.results);
+            }
+          }
+          setIsProcessing(false);
+        } else if (jobData.success && jobData.job.status === "failed") {
+          setError(jobData.job.error || "Job failed");
+          setIsProcessing(false);
+        } else if (attempts >= maxAttempts) {
+          setError("Timeout: Job took too long to complete");
+          setIsProcessing(false);
+        } else {
+          // Continue polling
+          setTimeout(poll, 10000); // Poll every 10 seconds
+        }
+      } catch (err) {
+        setError(err instanceof Error ? err.message : "Failed to check job status");
+        setIsProcessing(false);
+      }
+    };
+
+    poll();
   };
 
   return (
@@ -138,6 +221,107 @@ export default function Home() {
             </button>
           </div>
         </form>
+
+        {/* Error Display */}
+        {error && (
+          <div className="mt-6 bg-red-50 border border-red-200 rounded-lg p-4">
+            <div className="flex">
+              <div className="text-red-800">
+                <strong>エラー:</strong> {error}
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Processing Status */}
+        {isProcessing && jobId && (
+          <div className="mt-6 bg-blue-50 border border-blue-200 rounded-lg p-4">
+            <div className="flex items-center">
+              <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-600 mr-3"></div>
+              <div className="text-blue-800">
+                コンテンツを処理中です... (Job ID: {jobId})
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Results Display */}
+        {results && (
+          <div className="mt-8 space-y-6">
+            <h2 className="text-2xl font-bold text-gray-900">生成結果</h2>
+            
+            {/* Canonical Content */}
+            {results.canonicalContent && (
+              <div className="bg-white rounded-lg shadow p-6">
+                <h3 className="text-xl font-semibold mb-4">元コンテンツ分析</h3>
+                <div className="space-y-3">
+                  <div>
+                    <strong>タイトル:</strong> {results.canonicalContent.title}
+                  </div>
+                  <div>
+                    <strong>要約:</strong> {results.canonicalContent.summary}
+                  </div>
+                  <div>
+                    <strong>キーポイント:</strong>
+                    <ul className="list-disc list-inside ml-4 mt-1">
+                      {results.canonicalContent.keyPoints?.map((point: string, i: number) => (
+                        <li key={i}>{point}</li>
+                      ))}
+                    </ul>
+                  </div>
+                  <div>
+                    <strong>トピック:</strong> {results.canonicalContent.topics?.join(", ")}
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* Platform Results */}
+            {results.platformResults && (
+              <div className="space-y-4">
+                <h3 className="text-xl font-semibold">プラットフォーム別結果</h3>
+                {results.platformResults.map((result: any, i: number) => (
+                  <div key={i} className={`rounded-lg shadow p-6 ${
+                    result.success ? 'bg-green-50 border border-green-200' : 'bg-red-50 border border-red-200'
+                  }`}>
+                    <div className="flex items-center justify-between mb-3">
+                      <h4 className="text-lg font-medium capitalize">{result.platform}</h4>
+                      <span className={`px-3 py-1 rounded-full text-sm font-medium ${
+                        result.success ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'
+                      }`}>
+                        {result.success ? '成功' : '失敗'}
+                      </span>
+                    </div>
+                    
+                    {result.success ? (
+                      <div className="space-y-3">
+                        {result.result?.url && (
+                          <div>
+                            <strong>URL:</strong> 
+                            <a href={result.result.url} target="_blank" rel="noopener noreferrer" 
+                               className="text-blue-600 hover:underline ml-2">
+                              {result.result.url}
+                            </a>
+                          </div>
+                        )}
+                        <div>
+                          <strong>ステータス:</strong> {result.result?.status}
+                        </div>
+                        <div>
+                          <strong>メッセージ:</strong> {result.result?.message}
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="text-red-800">
+                        <strong>エラー:</strong> {result.error}
+                      </div>
+                    )}
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
       </div>
     </div>
   );
