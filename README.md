@@ -50,7 +50,21 @@ infra/
 
 ## 🚀 クイックスタート
 
-### 1. GCP セットアップ
+### 📋 必要な環境
+
+- **Node.js 18以上**
+- **Docker & Docker Compose** (推奨)
+- **gcloud CLI** (GCP連携用)
+- **Git**
+
+### 📥 1. リポジトリのクローン
+
+```bash
+git clone https://github.com/hirosuke0520/one-to-multi-agent
+cd one-to-multi-agent
+```
+
+### ⚙️ 2. GCP セットアップ（オプション）
 
 ```bash
 # GCP プロジェクトセットアップ（自動）
@@ -61,25 +75,126 @@ gcloud config set project one-to-multi-agent-80339
 gcloud services enable firebase.googleapis.com firestore.googleapis.com
 ```
 
-### 2. 開発環境起動
+> **💡 注意:** GCPセットアップをスキップしても、モック実装で動作確認可能です
+
+### 🚀 3. ローカル起動方法
+
+#### 方法1: Docker Compose（推奨）
 
 ```bash
-# Docker を使う場合（推奨）
+# 一発起動（依存関係インストール込み）
 ./infra/docker/dev.sh start
 
-# または個別に起動
-npm install
-npm run dev:api &    # API サーバー (http://localhost:8787)
-npm run dev:web      # フロントエンド (http://localhost:3000)
+# サービス状況確認
+./infra/docker/dev.sh status
+
+# ログ確認
+./infra/docker/dev.sh logs
+
+# 停止
+./infra/docker/dev.sh stop
 ```
 
-### 3. 動作確認
+#### 方法2: 個別起動
 
-1. http://localhost:3000 にアクセス
-2. テキストを入力（例：「今日は新しいAIツールについて紹介します...」）
-3. 投稿先プラットフォームを選択（Threads、WordPress など）
-4. 「コンテンツを生成」ボタンをクリック
-5. 結果を確認！
+```bash
+# 1. 依存関係インストール
+npm install
+
+# 2. APIサーバー起動（バックグラウンド）
+cd apps/api
+npm run dev &
+
+# 3. フロントエンド起動（新しいターミナル）
+cd apps/web
+npm run dev
+```
+
+### 🌐 4. アクセス先
+
+起動後、以下のURLにアクセス可能です：
+
+- **🖥️ フロントエンド:** http://localhost:3000
+- **🔧 API サーバー:** http://localhost:8787
+- **📊 API ドキュメント:** http://localhost:8787 (JSON)
+
+### ✅ 5. 動作確認手順
+
+1. **ブラウザでアクセス**
+   ```
+   http://localhost:3000
+   ```
+
+2. **サンプルテキストを入力**
+   ```
+   今日は新しいAIツールについて紹介します。
+   このツールを使うことで、コンテンツ制作者が効率的に作業できるようになります。
+   主な機能は音声認識、自動要約、複数プラットフォーム対応です。
+   ```
+
+3. **投稿先プラットフォームを選択**
+   - ✅ Threads
+   - ✅ WordPress
+   - ✅ YouTube
+   - その他お好みで
+
+4. **「コンテンツを生成」ボタンをクリック**
+
+5. **結果を確認**
+   - AI分析結果（タイトル、要約、キーポイント）
+   - プラットフォーム別の最適化コンテンツ
+   - 投稿URLs（モック）
+
+### 🔧 6. トラブルシューティング
+
+#### ポートが使用中のエラー
+```bash
+# ポート確認
+lsof -i :3000
+lsof -i :8787
+
+# プロセス終了
+kill -9 <PID>
+```
+
+#### Docker関連の問題
+```bash
+# Docker状況確認
+docker ps
+docker compose -f infra/docker/compose.yml ps
+
+# 完全リセット
+./infra/docker/dev.sh reset
+```
+
+#### npm install エラー
+```bash
+# キャッシュクリア
+npm cache clean --force
+
+# node_modules削除してリトライ
+rm -rf node_modules package-lock.json
+npm install
+```
+
+### 🧪 7. API テスト（コマンドライン）
+
+```bash
+# API動作確認
+curl http://localhost:8787
+
+# コンテンツ処理テスト
+curl -X POST http://localhost:8787/orchestrator/process \
+  -H "Content-Type: application/json" \
+  -d '{
+    "sourceType": "text",
+    "content": "テストコンテンツです",
+    "targets": ["threads", "wordpress"]
+  }'
+
+# 結果をjqで整形（jqインストール済みの場合）
+curl -s http://localhost:8787 | jq .
+```
 
 ## 🎯 デモフロー
 
