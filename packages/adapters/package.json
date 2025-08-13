@@ -1,0 +1,26 @@
+{
+  "name": "@one-to-multi-agent/adapters",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "scripts": {
+    "build": "tsc",
+    "dev": "tsc --watch",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "googleapis": "^140.0.0",
+    "axios": "^1.6.0",
+    "form-data": "^4.0.0",
+    "zod": "^3.22.0"
+  },
+  "devDependencies": {
+    "@types/node": "^20.0.0",
+    "typescript": "^5.0.0"
+  },
+  "peerDependencies": {
+    "typescript": "^5.0.0"
+  }
+}
