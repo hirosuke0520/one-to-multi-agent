@@ -67,6 +67,7 @@ jspm_packages/
 # GCP credentials
 gcp-key.json
 service-account.json
+gcp-service-account-key.json
 
 # SQLite
 *.db
