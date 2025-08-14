@@ -1,5 +1,6 @@
 import { v4 as uuidv4 } from "uuid";
 import { CanonicalContent, ProcessJobRequest } from "./orchestrator-service";
+import { RealAIService } from "./real-ai-service";
 
 export interface PlatformContent {
   id: string;
@@ -13,38 +14,53 @@ export interface PlatformContent {
 }
 
 export class ContentService {
+  private aiService: RealAIService;
+
+  constructor() {
+    // Initialize AI service with environment variables
+    this.aiService = new RealAIService({
+      geminiApiKey: process.env.GOOGLE_API_KEY,
+      useRealAI: process.env.USE_REAL_AI === "true" || !!process.env.GOOGLE_API_KEY
+    });
+  }
+
   async generateCanonicalContent(
     sourceText: string,
     sourceType: "text" | "audio" | "video",
     profile?: ProcessJobRequest["profile"]
   ): Promise<CanonicalContent> {
-    // TODO: Implement with Google Gemini/Vertex AI
-    // For now, return mock canonical content
+    console.log("🔄 Generating canonical content...");
     
-    const mockContent: CanonicalContent = {
+    // Use real AI service (with fallback to mock)
+    const generated = await this.aiService.generateCanonicalContent(
+      sourceText,
+      sourceType,
+      profile
+    );
+
+    const canonicalContent: CanonicalContent = {
       id: uuidv4(),
-      title: "新しいプロダクトの紹介",
-      summary: "今回は革新的な新プロダクトについて紹介します。このツールはコンテンツ制作者にとって非常に価値があります。",
+      title: generated.title,
+      summary: generated.summary,
       fullText: sourceText,
-      keyPoints: [
-        "自動文字起こし機能",
-        "多言語対応",
-        "リアルタイム処理",
-        "高精度の音声認識",
-        "コンテンツ制作者向けのツール"
-      ],
-      topics: ["プロダクト紹介", "AI技術", "コンテンツ制作", "音声認識"],
+      keyPoints: generated.keyPoints,
+      topics: generated.topics,
       metadata: {
         language: "ja",
         sourceType,
         duration: sourceType === "text" ? undefined : 180,
+        generatedAt: new Date().toISOString(),
+        aiUsed: process.env.GOOGLE_API_KEY ? "gemini-pro" : "mock"
       }
     };
 
-    // Simulate AI processing time
-    await new Promise(resolve => setTimeout(resolve, 2000));
+    console.log("✅ Canonical content generated:", {
+      title: canonicalContent.title,
+      keyPointsCount: canonicalContent.keyPoints.length,
+      topicsCount: canonicalContent.topics.length
+    });
 
-    return mockContent;
+    return canonicalContent;
   }
 
   async generatePlatformContent(
@@ -52,59 +68,42 @@ export class ContentService {
     platform: string,
     profile?: ProcessJobRequest["profile"]
   ): Promise<PlatformContent> {
-    // Define platform-specific templates and constraints
-    const platformTemplates = {
-      threads: {
-        maxLength: 500,
-        maxTags: 5,
-        style: "conversational",
-        supportsLinks: true,
-      },
-      wordpress: {
-        maxLength: 5000,
-        maxTags: 10,
-        style: "blog",
-        supportsLinks: true,
-      },
-      youtube: {
-        maxLength: 5000,
-        maxTags: 15,
-        style: "descriptive",
-        supportsLinks: true,
-      },
-      twitter: {
-        maxLength: 280,
-        maxTags: 3,
-        style: "concise",
-        supportsLinks: true,
-      },
-      instagram: {
-        maxLength: 2200,
-        maxTags: 30,
-        style: "visual",
-        supportsLinks: false,
-      },
-      tiktok: {
-        maxLength: 300,
-        maxTags: 5,
-        style: "trendy",
-        supportsLinks: false,
-      }
-    };
+    console.log(`🔄 Generating ${platform} content...`);
 
-    const template = platformTemplates[platform as keyof typeof platformTemplates];
-    
-    if (!template) {
-      throw new Error(`Unsupported platform: ${platform}`);
-    }
-
-    // Generate platform-specific content based on template
-    const platformContent = await this.generateContentForPlatform(
-      canonicalContent,
+    // Use real AI service for platform-specific content
+    const aiGenerated = await this.aiService.generatePlatformContent(
+      {
+        title: canonicalContent.title,
+        summary: canonicalContent.summary,
+        keyPoints: canonicalContent.keyPoints,
+        topics: canonicalContent.topics
+      },
       platform,
-      template,
       profile
     );
+
+    const platformContent: PlatformContent = {
+      id: uuidv4(),
+      platform,
+      primaryText: aiGenerated.text,
+      tags: aiGenerated.tags,
+      metadata: {
+        ...aiGenerated.metadata,
+        generatedAt: new Date().toISOString(),
+        aiUsed: process.env.GOOGLE_API_KEY ? "gemini-pro" : "mock"
+      },
+      notes: [
+        `Generated for ${platform}`,
+        `Character count: ${aiGenerated.text.length}`,
+        `Tags: ${aiGenerated.tags.length}`,
+      ],
+    };
+
+    console.log(`✅ ${platform} content generated:`, {
+      platform: platformContent.platform,
+      textLength: platformContent.primaryText.length,
+      tagsCount: platformContent.tags.length
+    });
 
     return platformContent;
   }

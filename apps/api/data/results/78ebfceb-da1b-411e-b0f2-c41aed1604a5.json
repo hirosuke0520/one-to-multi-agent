@@ -1,0 +1,57 @@
+{
+  "canonicalContent": {
+    "id": "8f4379d9-e0c6-472c-88d6-1a2bd479d772",
+    "title": "新しいプロダクトの紹介",
+    "summary": "今回は革新的な新プロダクトについて紹介します。このツールはコンテンツ制作者にとって非常に価値があります。",
+    "fullText": "マッチングアプリの課金は1ヶ月だけにしておけ\n長期契約をすると割引が入って一見お得に見えるが、アプリのアルゴリズム的に不利になるので「女の子とたくさん会う」という目的からは遠ざかるぞ",
+    "keyPoints": [
+      "自動文字起こし機能",
+      "多言語対応",
+      "リアルタイム処理",
+      "高精度の音声認識",
+      "コンテンツ制作者向けのツール"
+    ],
+    "topics": [
+      "プロダクト紹介",
+      "AI技術",
+      "コンテンツ制作",
+      "音声認識"
+    ],
+    "metadata": {
+      "language": "ja",
+      "sourceType": "text"
+    }
+  },
+  "platformResults": [
+    {
+      "platform": "threads",
+      "success": true,
+      "result": {
+        "success": true,
+        "platform": "threads",
+        "url": "https://threads.net/@user/post/6cc6084b-aa30-453b-bc3a-fd1f84999fcc",
+        "id": "6cc6084b-aa30-453b-bc3a-fd1f84999fcc",
+        "status": "published",
+        "message": "Successfully posted to Threads",
+        "publishedAt": "2025-08-14T23:21:28.487Z"
+      }
+    },
+    {
+      "platform": "twitter",
+      "success": false,
+      "error": "Mock content not available for platform: twitter"
+    },
+    {
+      "platform": "wordpress",
+      "success": true,
+      "result": {
+        "success": true,
+        "platform": "wordpress",
+        "url": "https://yoursite.com/wp-admin/post.php?post=1755213690696&action=edit",
+        "id": "1755213690696",
+        "status": "draft",
+        "message": "Draft created in WordPress"
+      }
+    }
+  ]
+}
