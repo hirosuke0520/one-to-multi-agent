@@ -59,24 +59,33 @@ enable_apis() {
     echo -e "${BLUE}Enabling free APIs...${NC}"
     for api in "${FREE_APIS[@]}"; do
         echo "- $api"
-        gcloud services enable $api --project=$PROJECT_ID || echo "  Failed (might already be enabled)"
+        gcloud services enable $api --project=$PROJECT_ID 2>/dev/null || echo "  Already enabled or failed"
     done
     
     echo
     
-    # Try to enable billing APIs
-    if check_billing; then
-        echo -e "${BLUE}Enabling APIs that require billing...${NC}"
+    # Check billing and try to enable billing APIs
+    echo -e "${BLUE}Checking billing for required APIs...${NC}"
+    BILLING_ENABLED=false
+    
+    # Test if we can enable a billing API
+    if gcloud services enable speech.googleapis.com --project=$PROJECT_ID 2>/dev/null; then
+        BILLING_ENABLED=true
+        echo -e "${GREEN}✅ Billing is working - enabling all APIs${NC}"
+        
         for api in "${BILLING_APIS[@]}"; do
             echo "- $api"
-            gcloud services enable $api --project=$PROJECT_ID || echo "  Failed"
+            gcloud services enable $api --project=$PROJECT_ID 2>/dev/null || echo "  Failed"
         done
     else
-        echo -e "${YELLOW}⚠️  Skipping billing-required APIs. Enable billing first.${NC}"
-        echo "Required APIs for full functionality:"
-        for api in "${BILLING_APIS[@]}"; do
-            echo "  - $api"
-        done
+        echo -e "${YELLOW}⚠️  Billing not enabled or insufficient permissions${NC}"
+        echo
+        echo -e "${YELLOW}To enable billing and use full AI features:${NC}"
+        echo "1. Go to https://console.cloud.google.com/billing"
+        echo "2. Link a billing account to project: $PROJECT_ID"
+        echo "3. Run this script again"
+        echo
+        echo -e "${BLUE}For now, the app will work with mock AI implementations${NC}"
     fi
 }
 

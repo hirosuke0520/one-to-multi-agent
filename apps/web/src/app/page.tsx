@@ -10,6 +10,7 @@ export default function Home() {
   const [isProcessing, setIsProcessing] = useState(false);
   const [jobId, setJobId] = useState<string | null>(null);
   const [results, setResults] = useState<any>(null);
+  const [editableContent, setEditableContent] = useState<Record<string, any>>({});
   const [error, setError] = useState<string | null>(null);
 
   const handleTargetToggle = (target: string) => {
@@ -97,6 +98,17 @@ export default function Home() {
             const resultsData = await resultsResponse.json();
             if (resultsData.success) {
               setResults(resultsData.results);
+              // Initialize editable content from platform results
+              const initialEditableContent: Record<string, any> = {};
+              if (resultsData.results?.platformResults) {
+                resultsData.results.platformResults.forEach((platformResult: any) => {
+                  if (platformResult.success && platformResult.content) {
+                    // プラットフォーム固有の内容をそのまま保存
+                    initialEditableContent[platformResult.platform] = { ...platformResult.content.content };
+                  }
+                });
+              }
+              setEditableContent(initialEditableContent);
             }
           }
           setIsProcessing(false);
@@ -117,6 +129,396 @@ export default function Home() {
     };
 
     poll();
+  };
+
+  const handlePublish = async (platform: string) => {
+    try {
+      const apiUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8787";
+      const contentData = editableContent[platform];
+      
+      if (!contentData) {
+        alert("コンテンツが見つかりません");
+        return;
+      }
+
+      // Find the original content data for metadata
+      const platformResult = results?.platformResults?.find((r: any) => r.platform === platform);
+      if (!platformResult?.content) {
+        alert("元のコンテンツデータが見つかりません");
+        return;
+      }
+
+      // Create platform-specific content structure based on the edited content
+      const publishPayload = {
+        platform: platform,
+        content: {
+          ...platformResult.content.content, // Original platform content structure
+          ...contentData // Merge with edited content
+        }
+      };
+
+      const response = await fetch(`${apiUrl}/publish`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(publishPayload),
+      });
+
+      if (!response.ok) {
+        throw new Error(`投稿に失敗しました: ${response.status}`);
+      }
+
+      const data = await response.json();
+      
+      if (data.success) {
+        alert(`${platform} への投稿が完了しました！`);
+      } else {
+        throw new Error(data.error || "投稿に失敗しました");
+      }
+    } catch (err) {
+      console.error("Publish error:", err);
+      alert(err instanceof Error ? err.message : "投稿中にエラーが発生しました");
+    }
+  };
+
+  // プラットフォーム別のコンテンツ表示・編集コンポーネント
+  const renderPlatformContent = (platform: string, content: any) => {
+    const editable = editableContent[platform] || content;
+
+    switch (platform) {
+      case 'threads':
+        return renderThreadsContent(editable);
+      case 'twitter':
+        return renderTwitterContent(editable);
+      case 'youtube':
+        return renderYouTubeContent(editable);
+      case 'wordpress':
+        return renderWordPressContent(editable);
+      case 'instagram':
+        return renderInstagramContent(editable);
+      case 'tiktok':
+        return renderTikTokContent(editable);
+      default:
+        return renderDefaultContent(editable);
+    }
+  };
+
+  const renderThreadsContent = (content: any) => (
+    <div className="space-y-4">
+      <div>
+        <label className="block text-sm font-medium text-gray-700 mb-2">
+          Threads投稿内容
+        </label>
+        <textarea
+          value={content.text || ''}
+          onChange={(e) => updateEditableContent('threads', 'text', e.target.value)}
+          rows={6}
+          className="w-full p-3 border border-gray-300 rounded-md resize-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+          placeholder="Threads投稿内容..."
+        />
+        <div className="mt-1 text-sm text-gray-500">
+          文字数: {(content.text || '').length} (制限なし)
+        </div>
+      </div>
+      <div>
+        <label className="block text-sm font-medium text-gray-700 mb-2">
+          ハッシュタグ
+        </label>
+        <input
+          type="text"
+          value={(content.hashtags || []).join(', ')}
+          onChange={(e) => updateEditableContent('threads', 'hashtags', e.target.value.split(',').map(t => t.trim()).filter(t => t))}
+          className="w-full p-3 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+          placeholder="ハッシュタグをカンマ区切りで入力"
+        />
+      </div>
+    </div>
+  );
+
+  const renderTwitterContent = (content: any) => (
+    <div className="space-y-4">
+      <div>
+        <label className="block text-sm font-medium text-gray-700 mb-2">
+          ツイート内容
+        </label>
+        <textarea
+          value={content.text || ''}
+          onChange={(e) => updateEditableContent('twitter', 'text', e.target.value)}
+          rows={4}
+          maxLength={140}
+          className="w-full p-3 border border-gray-300 rounded-md resize-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+          placeholder="ツイート内容（140文字以内）..."
+        />
+        <div className="mt-1 text-sm text-gray-500">
+          文字数: {(content.text || '').length}/140
+        </div>
+      </div>
+      <div>
+        <label className="block text-sm font-medium text-gray-700 mb-2">
+          ハッシュタグ（2-3個推奨）
+        </label>
+        <input
+          type="text"
+          value={(content.hashtags || []).join(', ')}
+          onChange={(e) => updateEditableContent('twitter', 'hashtags', e.target.value.split(',').map(t => t.trim()).filter(t => t))}
+          className="w-full p-3 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+          placeholder="ハッシュタグをカンマ区切りで入力"
+        />
+      </div>
+    </div>
+  );
+
+  const renderYouTubeContent = (content: any) => (
+    <div className="space-y-4">
+      <div>
+        <label className="block text-sm font-medium text-gray-700 mb-2">
+          動画タイトル
+        </label>
+        <input
+          type="text"
+          value={content.title || ''}
+          onChange={(e) => updateEditableContent('youtube', 'title', e.target.value)}
+          maxLength={60}
+          className="w-full p-3 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+          placeholder="YouTubeタイトル（60文字以内推奨）"
+        />
+        <div className="mt-1 text-sm text-gray-500">
+          文字数: {(content.title || '').length}/60
+        </div>
+      </div>
+      <div>
+        <label className="block text-sm font-medium text-gray-700 mb-2">
+          動画説明（概要欄）
+        </label>
+        <textarea
+          value={content.description || ''}
+          onChange={(e) => updateEditableContent('youtube', 'description', e.target.value)}
+          rows={8}
+          className="w-full p-3 border border-gray-300 rounded-md resize-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+          placeholder="動画の詳細説明..."
+        />
+      </div>
+      <div>
+        <label className="block text-sm font-medium text-gray-700 mb-2">
+          チャプター
+        </label>
+        <div className="space-y-2">
+          {(content.chapters || []).map((chapter: any, i: number) => (
+            <div key={i} className="flex space-x-2">
+              <input
+                type="text"
+                value={chapter.time || ''}
+                onChange={(e) => updateChapter('youtube', i, 'time', e.target.value)}
+                className="w-20 p-2 border border-gray-300 rounded-md text-sm"
+                placeholder="00:00"
+              />
+              <input
+                type="text"
+                value={chapter.title || ''}
+                onChange={(e) => updateChapter('youtube', i, 'title', e.target.value)}
+                className="flex-1 p-2 border border-gray-300 rounded-md text-sm"
+                placeholder="チャプタータイトル"
+              />
+            </div>
+          ))}
+        </div>
+      </div>
+      <div>
+        <label className="block text-sm font-medium text-gray-700 mb-2">
+          ハッシュタグ
+        </label>
+        <input
+          type="text"
+          value={(content.hashtags || []).join(', ')}
+          onChange={(e) => updateEditableContent('youtube', 'hashtags', e.target.value.split(',').map(t => t.trim()).filter(t => t))}
+          className="w-full p-3 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+          placeholder="ハッシュタグをカンマ区切りで入力"
+        />
+      </div>
+    </div>
+  );
+
+  const renderWordPressContent = (content: any) => (
+    <div className="space-y-4">
+      <div>
+        <label className="block text-sm font-medium text-gray-700 mb-2">
+          記事タイトル
+        </label>
+        <input
+          type="text"
+          value={content.title || ''}
+          onChange={(e) => updateEditableContent('wordpress', 'title', e.target.value)}
+          className="w-full p-3 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+          placeholder="記事タイトル"
+        />
+      </div>
+      <div>
+        <label className="block text-sm font-medium text-gray-700 mb-2">
+          記事抜粋
+        </label>
+        <textarea
+          value={content.excerpt || ''}
+          onChange={(e) => updateEditableContent('wordpress', 'excerpt', e.target.value)}
+          rows={3}
+          maxLength={160}
+          className="w-full p-3 border border-gray-300 rounded-md resize-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+          placeholder="記事の抜粋（160文字以内）"
+        />
+        <div className="mt-1 text-sm text-gray-500">
+          文字数: {(content.excerpt || '').length}/160
+        </div>
+      </div>
+      <div>
+        <label className="block text-sm font-medium text-gray-700 mb-2">
+          記事本文（Markdown）
+        </label>
+        <textarea
+          value={content.content || ''}
+          onChange={(e) => updateEditableContent('wordpress', 'content', e.target.value)}
+          rows={12}
+          className="w-full p-3 border border-gray-300 rounded-md resize-none focus:ring-2 focus:ring-blue-500 focus:border-transparent font-mono text-sm"
+          placeholder="# 見出し&#10;&#10;本文内容..."
+        />
+      </div>
+      <div className="grid grid-cols-2 gap-4">
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-2">
+            カテゴリ
+          </label>
+          <input
+            type="text"
+            value={(content.categories || []).join(', ')}
+            onChange={(e) => updateEditableContent('wordpress', 'categories', e.target.value.split(',').map(t => t.trim()).filter(t => t))}
+            className="w-full p-3 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+            placeholder="カテゴリをカンマ区切りで入力"
+          />
+        </div>
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-2">
+            タグ
+          </label>
+          <input
+            type="text"
+            value={(content.tags || []).join(', ')}
+            onChange={(e) => updateEditableContent('wordpress', 'tags', e.target.value.split(',').map(t => t.trim()).filter(t => t))}
+            className="w-full p-3 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+            placeholder="タグをカンマ区切りで入力"
+          />
+        </div>
+      </div>
+    </div>
+  );
+
+  const renderInstagramContent = (content: any) => (
+    <div className="space-y-4">
+      <div>
+        <label className="block text-sm font-medium text-gray-700 mb-2">
+          キャプション
+        </label>
+        <textarea
+          value={content.caption || ''}
+          onChange={(e) => updateEditableContent('instagram', 'caption', e.target.value)}
+          rows={8}
+          maxLength={2200}
+          className="w-full p-3 border border-gray-300 rounded-md resize-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+          placeholder="Instagram キャプション..."
+        />
+        <div className="mt-1 text-sm text-gray-500">
+          文字数: {(content.caption || '').length}/2200
+        </div>
+      </div>
+      <div>
+        <label className="block text-sm font-medium text-gray-700 mb-2">
+          ハッシュタグ（最大30個）
+        </label>
+        <textarea
+          value={(content.hashtags || []).join(' #')}
+          onChange={(e) => updateEditableContent('instagram', 'hashtags', e.target.value.split('#').map(t => t.trim()).filter(t => t))}
+          rows={3}
+          className="w-full p-3 border border-gray-300 rounded-md resize-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+          placeholder="#ハッシュタグ1 #ハッシュタグ2..."
+        />
+      </div>
+    </div>
+  );
+
+  const renderTikTokContent = (content: any) => (
+    <div className="space-y-4">
+      <div>
+        <label className="block text-sm font-medium text-gray-700 mb-2">
+          キャプション
+        </label>
+        <textarea
+          value={content.caption || ''}
+          onChange={(e) => updateEditableContent('tiktok', 'caption', e.target.value)}
+          rows={4}
+          maxLength={300}
+          className="w-full p-3 border border-gray-300 rounded-md resize-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+          placeholder="TikTok キャプション（300文字以内）..."
+        />
+        <div className="mt-1 text-sm text-gray-500">
+          文字数: {(content.caption || '').length}/300
+        </div>
+      </div>
+      <div>
+        <label className="block text-sm font-medium text-gray-700 mb-2">
+          ハッシュタグ
+        </label>
+        <input
+          type="text"
+          value={(content.hashtags || []).join(', ')}
+          onChange={(e) => updateEditableContent('tiktok', 'hashtags', e.target.value.split(',').map(t => t.trim()).filter(t => t))}
+          className="w-full p-3 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+          placeholder="ハッシュタグをカンマ区切りで入力"
+        />
+      </div>
+    </div>
+  );
+
+  const renderDefaultContent = (content: any) => (
+    <div className="space-y-4">
+      <div>
+        <label className="block text-sm font-medium text-gray-700 mb-2">
+          コンテンツ
+        </label>
+        <textarea
+          value={content.text || content.caption || ''}
+          onChange={(e) => updateEditableContent('default', 'text', e.target.value)}
+          rows={6}
+          className="w-full p-3 border border-gray-300 rounded-md resize-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+          placeholder="コンテンツ内容..."
+        />
+      </div>
+    </div>
+  );
+
+  // ヘルパー関数
+  const updateEditableContent = (platform: string, field: string, value: any) => {
+    setEditableContent(prev => ({
+      ...prev,
+      [platform]: {
+        ...prev[platform],
+        [field]: value
+      }
+    }));
+  };
+
+  const updateChapter = (platform: string, index: number, field: string, value: string) => {
+    setEditableContent(prev => {
+      const chapters = [...(prev[platform]?.chapters || [])];
+      chapters[index] = {
+        ...chapters[index],
+        [field]: value
+      };
+      return {
+        ...prev,
+        [platform]: {
+          ...prev[platform],
+          chapters
+        }
+      };
+    });
   };
 
   return (
@@ -250,65 +652,55 @@ export default function Home() {
           <div className="mt-8 space-y-6">
             <h2 className="text-2xl font-bold text-gray-900">生成結果</h2>
             
-            {/* Canonical Content */}
-            {results.canonicalContent && (
+            {/* Source Text Display */}
+            {results.sourceText && (
               <div className="bg-white rounded-lg shadow p-6">
-                <h3 className="text-xl font-semibold mb-4">元コンテンツ分析</h3>
+                <h3 className="text-xl font-semibold mb-4">入力されたコンテンツ</h3>
                 <div className="space-y-3">
-                  <div>
-                    <strong>タイトル:</strong> {results.canonicalContent.title}
-                  </div>
-                  <div>
-                    <strong>要約:</strong> {results.canonicalContent.summary}
-                  </div>
-                  <div>
-                    <strong>キーポイント:</strong>
-                    <ul className="list-disc list-inside ml-4 mt-1">
-                      {results.canonicalContent.keyPoints?.map((point: string, i: number) => (
-                        <li key={i}>{point}</li>
-                      ))}
-                    </ul>
-                  </div>
-                  <div>
-                    <strong>トピック:</strong> {results.canonicalContent.topics?.join(", ")}
+                  <div className="bg-gray-50 p-4 rounded-md">
+                    <div className="text-gray-800 whitespace-pre-wrap">{results.sourceText}</div>
                   </div>
                 </div>
               </div>
             )}
 
-            {/* Platform Results */}
+            {/* Platform-Specific Generated Content */}
             {results.platformResults && (
-              <div className="space-y-4">
-                <h3 className="text-xl font-semibold">プラットフォーム別結果</h3>
+              <div className="space-y-6">
+                <h3 className="text-xl font-semibold">プラットフォーム別コンテンツ</h3>
                 {results.platformResults.map((result: any, i: number) => (
-                  <div key={i} className={`rounded-lg shadow p-6 ${
-                    result.success ? 'bg-green-50 border border-green-200' : 'bg-red-50 border border-red-200'
-                  }`}>
-                    <div className="flex items-center justify-between mb-3">
+                  <div key={i} className="bg-white rounded-lg shadow p-6">
+                    <div className="flex items-center justify-between mb-4">
                       <h4 className="text-lg font-medium capitalize">{result.platform}</h4>
-                      <span className={`px-3 py-1 rounded-full text-sm font-medium ${
-                        result.success ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'
-                      }`}>
-                        {result.success ? '成功' : '失敗'}
-                      </span>
+                      {result.success && (
+                        <span className="px-3 py-1 rounded-full text-sm font-medium bg-blue-100 text-blue-800">
+                          生成完了
+                        </span>
+                      )}
                     </div>
                     
-                    {result.success ? (
-                      <div className="space-y-3">
-                        {result.result?.url && (
-                          <div>
-                            <strong>URL:</strong> 
-                            <a href={result.result.url} target="_blank" rel="noopener noreferrer" 
-                               className="text-blue-600 hover:underline ml-2">
-                              {result.result.url}
-                            </a>
+                    {result.success && result.content ? (
+                      <div className="space-y-4">
+                        {/* Platform-Specific Content Rendering */}
+                        {renderPlatformContent(result.platform, result.content.content)}
+
+                        {/* Platform Info */}
+                        <div className="bg-gray-50 p-3 rounded-md">
+                          <div className="text-sm text-gray-600 space-y-1">
+                            <div><strong>プラットフォーム:</strong> {result.content.content.platform}</div>
+                            <div><strong>生成時刻:</strong> {new Date(result.content.metadata?.generatedAt).toLocaleString('ja-JP')}</div>
+                            <div><strong>AI:</strong> {result.content.metadata?.aiUsed || 'unknown'}</div>
                           </div>
-                        )}
-                        <div>
-                          <strong>ステータス:</strong> {result.result?.status}
                         </div>
-                        <div>
-                          <strong>メッセージ:</strong> {result.result?.message}
+
+                        {/* Publish Button */}
+                        <div className="flex justify-end">
+                          <button
+                            onClick={() => handlePublish(result.platform)}
+                            className="px-6 py-2 bg-green-600 text-white rounded-lg font-medium hover:bg-green-700 transition-colors"
+                          >
+                            {result.platform} に投稿
+                          </button>
                         </div>
                       </div>
                     ) : (

@@ -3,13 +3,15 @@ import { Hono } from "hono";
 import { cors } from "hono/cors";
 import { orchestrator } from "./routes/orchestrator";
 import { jobs } from "./routes/jobs";
+import { publish } from "./routes/publish";
 
 const app = new Hono();
 
 app.use("*", cors({
-  origin: ["http://localhost:3000"],
+  origin: ["http://localhost:3000", "http://web:3000"],
   allowMethods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
   allowHeaders: ["Content-Type", "Authorization"],
+  credentials: true,
 }));
 
 app.get("/", (c) => {
@@ -26,6 +28,7 @@ app.get("/", (c) => {
 
 app.route("/orchestrator", orchestrator);
 app.route("/jobs", jobs);
+app.route("/publish", publish);
 
 const port = parseInt(process.env.PORT || "8787");
 

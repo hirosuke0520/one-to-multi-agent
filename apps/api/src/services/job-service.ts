@@ -3,11 +3,11 @@ import path from "path";
 import { Job, ProcessJobRequest, CanonicalContent } from "./orchestrator-service";
 
 export interface JobResults {
-  canonicalContent: CanonicalContent;
+  sourceText: string;
   platformResults: Array<{
     platform: string;
     success: boolean;
-    result?: any;
+    content?: any;
     error?: string;
   }>;
 }

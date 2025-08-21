@@ -40,7 +40,7 @@ start_services() {
     echo -e "${YELLOW}🐳 Starting Docker services...${NC}"
     
     # Use the docker-compose file from the infra directory
-    docker compose -f infra/docker/compose.yml --env-file infra/docker/.env.docker up -d
+    docker compose -f infra/docker/compose.yml up -d
     
     echo -e "${GREEN}✅ Services started!${NC}"
     echo

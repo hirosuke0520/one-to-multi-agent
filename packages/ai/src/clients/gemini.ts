@@ -1,4 +1,9 @@
-import { ContentGenerationOptions, GeneratedContent, PlatformConstraints, AIConfig } from "../types";
+import {
+  ContentGenerationOptions,
+  GeneratedContent,
+  PlatformConstraints,
+  AIConfig,
+} from "../types";
 
 export class GeminiClient {
   private config: AIConfig;
@@ -19,19 +24,20 @@ export class GeminiClient {
     // TODO: Implement Google Gemini API
     // For now, return a mock implementation
 
-    await new Promise(resolve => setTimeout(resolve, 1500));
+    await new Promise((resolve) => setTimeout(resolve, 1500));
 
     const mockResult = {
       title: "革新的なAIツールの紹介",
-      summary: "新しいAIツールにより、コンテンツ制作者の作業効率が大幅に向上します。音声認識、自動要約、複数プラットフォーム最適化機能を搭載。",
+      summary:
+        "新しいAIツールにより、コンテンツ制作者の作業効率が大幅に向上します。音声認識、自動要約、複数プラットフォーム最適化機能を搭載。",
       keyPoints: [
         "高精度な音声認識機能",
         "自動要約とキーポイント抽出",
         "複数プラットフォームへの最適化",
         "コンテンツ制作効率の向上",
-        "ユーザーフレンドリーなインターフェース"
+        "ユーザーフレンドリーなインターフェース",
       ],
-      topics: ["AI", "コンテンツ制作", "音声認識", "自動化", "効率化"]
+      topics: ["AI", "コンテンツ制作", "音声認識", "自動化", "効率化"],
     };
 
     return mockResult;
@@ -50,11 +56,16 @@ export class GeminiClient {
     options?: ContentGenerationOptions
   ): Promise<GeneratedContent> {
     // TODO: Implement Google Gemini API with platform-specific prompts
-    
-    await new Promise(resolve => setTimeout(resolve, 1200));
 
-    const platformTemplates = this.getPlatformTemplate(platform, canonicalContent, constraints, options);
-    
+    await new Promise((resolve) => setTimeout(resolve, 1200));
+
+    const platformTemplates = this.getPlatformTemplate(
+      platform,
+      canonicalContent,
+      constraints,
+      options
+    );
+
     return {
       text: platformTemplates.text,
       title: platformTemplates.title,
@@ -63,10 +74,12 @@ export class GeminiClient {
       metadata: {
         characterCount: platformTemplates.text.length,
         wordCount: platformTemplates.text.split(/\s+/).length,
-        estimatedReadTime: Math.ceil(platformTemplates.text.split(/\s+/).length / 200),
+        estimatedReadTime: Math.ceil(
+          platformTemplates.text.split(/\s+/).length / 200
+        ),
         platform,
         generatedAt: new Date().toISOString(),
-      }
+      },
     };
   }
 
@@ -77,7 +90,7 @@ export class GeminiClient {
     options?: ContentGenerationOptions
   ) {
     const baseEmojis = options?.includeEmojis && constraints.supportsEmojis;
-    
+
     switch (platform) {
       case "threads":
         return {
@@ -86,16 +99,26 @@ export class GeminiClient {
 ${content.summary}
 
 ${baseEmojis ? "✨ " : ""}主な特徴：
-${content.keyPoints.slice(0, 3).map((point: string, i: number) => 
-  `${baseEmojis ? "• " : `${i + 1}. `}${point}`
-).join('\n')}
+${content.keyPoints
+  .slice(0, 3)
+  .map(
+    (point: string, i: number) => `${baseEmojis ? "• " : `${i + 1}. `}${point}`
+  )
+  .join("\n")}
 
 ${options?.cta || "詳細はコメントで質問してください！"}
 
-${options?.includeTags ? content.topics.slice(0, constraints.maxTags).map((tag: string) => `#${tag}`).join(' ') : ''}`,
+${
+  options?.includeTags
+    ? content.topics
+        .slice(0, constraints.maxTags)
+        .map((tag: string) => `#${tag}`)
+        .join(" ")
+    : ""
+}`,
           title: content.title,
           summary: content.summary,
-          tags: content.topics.slice(0, constraints.maxTags)
+          tags: content.topics.slice(0, constraints.maxTags),
         };
 
       case "wordpress":
@@ -108,7 +131,9 @@ ${content.summary}
 
 ## 主な機能・特徴
 
-${content.keyPoints.map((point: string, i: number) => `${i + 1}. **${point}**`).join('\n\n')}
+${content.keyPoints
+  .map((point: string, i: number) => `${i + 1}. **${point}**`)
+  .join("\n\n")}
 
 ## まとめ
 
@@ -116,10 +141,10 @@ ${content.keyPoints.map((point: string, i: number) => `${i + 1}. **${point}**`).
 
 ---
 
-*タグ: ${content.topics.join(', ')}*`,
+*タグ: ${content.topics.join(", ")}*`,
           title: content.title,
           summary: content.summary,
-          tags: content.topics
+          tags: content.topics,
         };
 
       case "youtube":
@@ -130,16 +155,18 @@ ${content.keyPoints.map((point: string, i: number) => `${i + 1}. **${point}**`).
 ${content.summary}
 
 🔥 この動画で学べること：
-${content.keyPoints.map((point: string, i: number) => `${i + 1}. ${point}`).join('\n')}
+${content.keyPoints
+  .map((point: string, i: number) => `${i + 1}. ${point}`)
+  .join("\n")}
 
 💡 このAIツールは、コンテンツ制作の未来を変える技術です。
 
 👍 役に立ったら高評価・チャンネル登録をお願いします！
 
-🏷️ ${content.topics.map((tag: string) => `#${tag}`).join(' ')}`,
+🏷️ ${content.topics.map((tag: string) => `#${tag}`).join(" ")}`,
           title: content.title,
           summary: content.summary,
-          tags: content.topics
+          tags: content.topics,
         };
 
       default:
@@ -147,41 +174,47 @@ ${content.keyPoints.map((point: string, i: number) => `${i + 1}. ${point}`).join
           text: content.fullText.substring(0, constraints.maxLength),
           title: content.title,
           summary: content.summary,
-          tags: content.topics.slice(0, constraints.maxTags)
+          tags: content.topics.slice(0, constraints.maxTags),
         };
     }
   }
 
-  async summarizeContent(text: string, maxLength: number = 200): Promise<string> {
+  async summarizeContent(
+    text: string,
+    maxLength: number = 200
+  ): Promise<string> {
     // TODO: Implement with Gemini API
-    
-    await new Promise(resolve => setTimeout(resolve, 800));
-    
+
+    await new Promise((resolve) => setTimeout(resolve, 800));
+
     // Simple mock summarization
-    const sentences = text.split(/[.。!！?？]/).filter(s => s.trim());
-    const summary = sentences.slice(0, 3).join('。') + '。';
-    
+    const sentences = text.split(/[.。!！?？]/).filter((s) => s.trim());
+    const summary = sentences.slice(0, 3).join("。") + "。";
+
     if (summary.length <= maxLength) {
       return summary;
     }
-    
-    return summary.substring(0, maxLength - 3) + '...';
+
+    return summary.substring(0, maxLength - 3) + "...";
   }
 
-  async extractKeyPoints(text: string, maxPoints: number = 5): Promise<string[]> {
+  async extractKeyPoints(
+    text: string,
+    maxPoints: number = 5
+  ): Promise<string[]> {
     // TODO: Implement with Gemini API
-    
-    await new Promise(resolve => setTimeout(resolve, 600));
-    
+
+    await new Promise((resolve) => setTimeout(resolve, 600));
+
     // Mock key points extraction
     const mockPoints = [
       "AI技術による自動化",
       "コンテンツ制作効率の向上",
       "複数プラットフォーム対応",
       "高精度な音声認識",
-      "ユーザビリティの改善"
+      "ユーザビリティの改善",
     ];
-    
+
     return mockPoints.slice(0, maxPoints);
   }
 
@@ -191,13 +224,13 @@ ${content.keyPoints.map((point: string, i: number) => `${i + 1}. ${point}`).join
     const { GoogleGenerativeAI } = require("@google-cloud/generative-ai");
     
     const genAI = new GoogleGenerativeAI(this.config.geminiApiKey);
-    const model = genAI.getGenerativeModel({ model: "gemini-pro" });
+    const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
 
     const result = await model.generateContent(prompt);
     const response = await result.response;
     return response.text();
     */
-    
+
     throw new Error("Gemini API not implemented yet");
   }
 }

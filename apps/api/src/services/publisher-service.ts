@@ -1,4 +1,4 @@
-import { PlatformContent } from "./content-service";
+import { PlatformContent } from "./real-ai-service";
 
 export interface PublishResult {
   success: boolean;
@@ -10,8 +10,16 @@ export interface PublishResult {
   publishedAt?: Date;
 }
 
+export interface PublishableContent {
+  id: string;
+  platform: string;
+  primaryText: string;
+  tags: string[];
+  metadata?: Record<string, any>;
+}
+
 export class PublisherService {
-  async publish(content: PlatformContent, platform: string): Promise<PublishResult> {
+  async publish(content: PublishableContent, platform: string): Promise<PublishResult> {
     try {
       switch (platform) {
         case "threads":
@@ -39,7 +47,7 @@ export class PublisherService {
     }
   }
 
-  private async publishToThreads(content: PlatformContent): Promise<PublishResult> {
+  private async publishToThreads(content: PublishableContent): Promise<PublishResult> {
     // TODO: Implement Meta Threads Graph API
     // For MVP, we'll create a mock implementation
     
@@ -56,7 +64,7 @@ export class PublisherService {
     };
   }
 
-  private async publishToWordPress(content: PlatformContent): Promise<PublishResult> {
+  private async publishToWordPress(content: PublishableContent): Promise<PublishResult> {
     // TODO: Implement WordPress REST API or webhook
     // For MVP, we'll create a draft via webhook
     
@@ -72,7 +80,7 @@ export class PublisherService {
     };
   }
 
-  private async publishToYouTube(content: PlatformContent): Promise<PublishResult> {
+  private async publishToYouTube(content: PublishableContent): Promise<PublishResult> {
     // TODO: Implement YouTube Data API v3
     // This would handle video metadata, not video upload
     
@@ -88,7 +96,7 @@ export class PublisherService {
     };
   }
 
-  private async publishToTwitter(content: PlatformContent): Promise<PublishResult> {
+  private async publishToTwitter(content: PublishableContent): Promise<PublishResult> {
     // TODO: Implement Twitter API v2
     // Note: Twitter API requires paid access for posting
     
@@ -105,7 +113,7 @@ export class PublisherService {
     };
   }
 
-  private async publishToInstagram(content: PlatformContent): Promise<PublishResult> {
+  private async publishToInstagram(content: PublishableContent): Promise<PublishResult> {
     // TODO: Implement Instagram Basic Display API
     // Note: Instagram posting requires business account and app review
     
@@ -121,7 +129,7 @@ export class PublisherService {
     };
   }
 
-  private async publishToTikTok(content: PlatformContent): Promise<PublishResult> {
+  private async publishToTikTok(content: PublishableContent): Promise<PublishResult> {
     // TODO: Implement TikTok API
     // Note: TikTok API has specific requirements and approval process
     

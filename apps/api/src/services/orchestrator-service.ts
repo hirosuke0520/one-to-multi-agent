@@ -93,34 +93,23 @@ export class OrchestratorService {
         sourceText = await this.transcriberService.transcribe(filePath, request.sourceType);
       }
 
-      // Step 2: Generate canonical content
-      const canonicalContent = await this.contentService.generateCanonicalContent(
-        sourceText,
-        request.sourceType,
-        request.profile
-      );
-
-      // Step 3: Generate platform-specific content
+      // Step 2: Generate platform-specific content directly from source text
       const platformResults = [];
       
       for (const target of request.targets) {
         try {
           const platformContent = await this.contentService.generatePlatformContent(
-            canonicalContent,
+            sourceText,
             target,
             request.profile
           );
           
-          // Step 4: Publish/create draft
-          const publishResult = await this.publisherService.publish(
-            platformContent,
-            target
-          );
-          
+          // Store generated content without publishing yet
           platformResults.push({
             platform: target,
             success: true,
-            result: publishResult,
+            content: platformContent,
+            // Note: Publishing is now separate from content generation
           });
         } catch (error) {
           console.error(`Failed to process ${target}:`, error);
@@ -132,9 +121,9 @@ export class OrchestratorService {
         }
       }
 
-      // Step 5: Save results
+      // Step 3: Save results
       await this.jobService.saveJobResults(jobId, {
-        canonicalContent,
+        sourceText,
         platformResults,
       });
 
