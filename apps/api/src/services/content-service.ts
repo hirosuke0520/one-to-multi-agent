@@ -24,7 +24,7 @@ export class ContentService {
   }
 
   async generateCanonicalContent(
-    sourceText: string,
+    source: string | { fileBuffer: Buffer; fileName: string; mimeType: string; sourceType: string },
     sourceType: "text" | "audio" | "video",
     profile?: ProcessJobRequest["profile"]
   ): Promise<CanonicalContent> {
@@ -32,11 +32,13 @@ export class ContentService {
 
     // Use real AI service (with fallback to mock)
     const generated = await this.aiService.generateCanonicalContent(
-      sourceText,
+      source,
       sourceType,
       profile
     );
 
+    const sourceText = typeof source === "string" ? source : `File: ${source.fileName}`;
+    
     const canonicalContent: CanonicalContent = {
       id: uuidv4(),
       title: generated.title,
@@ -61,7 +63,7 @@ export class ContentService {
   }
 
   async generatePlatformContent(
-    sourceText: string,
+    source: string | { fileBuffer: Buffer; fileName: string; mimeType: string; sourceType: string },
     platform: string,
     profile?: ProcessJobRequest["profile"]
   ): Promise<ContentServicePlatformContent> {
@@ -69,7 +71,7 @@ export class ContentService {
 
     // Use real AI service for platform-specific content
     const aiGenerated = await this.aiService.generatePlatformContent(
-      sourceText,
+      source,
       platform,
       profile
     );

@@ -25,7 +25,9 @@ export class JobService {
 
   async saveJob(job: Job): Promise<void> {
     const jobPath = path.join(this.dataDir, "jobs", `${job.id}.json`);
-    await fs.writeJSON(jobPath, job, { spaces: 2 });
+    // Remove buffer from job before saving to JSON (buffer is kept in memory only)
+    const { fileBuffer, ...jobWithoutBuffer } = job;
+    await fs.writeJSON(jobPath, jobWithoutBuffer, { spaces: 2 });
   }
 
   async getJob(jobId: string): Promise<Job | null> {
@@ -42,7 +44,9 @@ export class JobService {
 
   async saveJobRequest(jobId: string, request: ProcessJobRequest): Promise<void> {
     const requestPath = path.join(this.dataDir, "requests", `${jobId}.json`);
-    await fs.writeJSON(requestPath, request, { spaces: 2 });
+    // Remove buffer from request before saving to JSON (buffer is kept in memory only)
+    const { fileBuffer, ...requestWithoutBuffer } = request;
+    await fs.writeJSON(requestPath, requestWithoutBuffer, { spaces: 2 });
   }
 
   async getJobRequest(jobId: string): Promise<ProcessJobRequest | null> {

@@ -19,38 +19,83 @@ const processSchema = z.object({
 orchestrator.post(
   "/process",
   async (c) => {
-    const body = await c.req.json();
-    const validation = processSchema.safeParse(body);
-    
-    if (!validation.success) {
-      return c.json({
-        success: false,
-        error: "Invalid request data",
-        details: validation.error.issues,
-      }, 400);
-    }
-    
-    const { sourceType, content, targets, profile } = validation.data;
-    
     try {
-      const orchestratorService = new OrchestratorService();
-      const jobId = await orchestratorService.createJob({
-        sourceType,
-        content,
-        targets,
-        profile,
-      });
+      const contentType = c.req.header("content-type");
+      
+      if (contentType?.includes("multipart/form-data")) {
+        // Handle file upload using Hono's built-in body parser
+        const body = await c.req.formData();
+        
+        const sourceType = body.get("sourceType") as string;
+        const targets = JSON.parse(body.get("targets") as string || "[]");
+        const profile = JSON.parse(body.get("profile") as string || "{}");
+        const uploadedFile = body.get("file") as File;
 
-      // Start processing in background
-      orchestratorService.processJob(jobId).catch(error => {
-        console.error(`Job ${jobId} failed:`, error);
-      });
+        if (!uploadedFile) {
+          return c.json({
+            success: false,
+            error: "No file uploaded",
+          }, 400);
+        }
 
-      return c.json({
-        success: true,
-        jobId,
-        message: "Processing started",
-      });
+        // Convert File to Buffer for direct processing (no disk storage)
+        const arrayBuffer = await uploadedFile.arrayBuffer();
+        const buffer = Buffer.from(arrayBuffer);
+        
+        const orchestratorService = new OrchestratorService();
+        const jobId = await orchestratorService.createJob({
+          sourceType: sourceType as "audio" | "video",
+          fileBuffer: buffer, // Pass buffer directly instead of file path
+          fileName: uploadedFile.name,
+          mimeType: uploadedFile.type,
+          targets,
+          profile,
+        });
+
+        // Start processing in background
+        orchestratorService.processJob(jobId).catch(error => {
+          console.error(`Job ${jobId} failed:`, error);
+        });
+
+        return c.json({
+          success: true,
+          jobId,
+          message: "Processing started",
+        });
+      } else {
+        // Handle JSON (text content)
+        const body = await c.req.json();
+        const validation = processSchema.safeParse(body);
+        
+        if (!validation.success) {
+          return c.json({
+            success: false,
+            error: "Invalid request data",
+            details: validation.error.issues,
+          }, 400);
+        }
+        
+        const { sourceType, content, targets, profile } = validation.data;
+        
+        const orchestratorService = new OrchestratorService();
+        const jobId = await orchestratorService.createJob({
+          sourceType,
+          content,
+          targets,
+          profile,
+        });
+
+        // Start processing in background
+        orchestratorService.processJob(jobId).catch(error => {
+          console.error(`Job ${jobId} failed:`, error);
+        });
+
+        return c.json({
+          success: true,
+          jobId,
+          message: "Processing started",
+        });
+      }
     } catch (error) {
       console.error("Failed to start processing:", error);
       return c.json({
@@ -61,21 +106,5 @@ orchestrator.post(
   }
 );
 
-// Handle file uploads for audio/video
-orchestrator.post("/upload", async (c) => {
-  try {
-    // TODO: Implement file upload handling with multer
-    return c.json({
-      success: true,
-      message: "File upload endpoint - TODO: implement",
-    });
-  } catch (error) {
-    console.error("Upload failed:", error);
-    return c.json({
-      success: false,
-      error: error instanceof Error ? error.message : "Unknown error",
-    }, 500);
-  }
-});
 
 export { orchestrator };

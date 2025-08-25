@@ -37,24 +37,49 @@ export default function Home() {
     try {
       const apiUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8787";
       
-      const payload = {
-        sourceType,
-        content: sourceType === "text" ? content : undefined,
-        targets,
-        profile: {
+      let response: Response;
+      
+      if (sourceType === "text") {
+        // Text content - send as JSON
+        const payload = {
+          sourceType,
+          content,
+          targets,
+          profile: {
+            tone: "conversational",
+            audience: "general",
+            purpose: "inform"
+          }
+        };
+
+        response = await fetch(`${apiUrl}/orchestrator/process`, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify(payload),
+        });
+      } else {
+        // Audio/Video content - send as FormData
+        if (!file) {
+          throw new Error("ファイルが選択されていません");
+        }
+        
+        const formData = new FormData();
+        formData.append("file", file);
+        formData.append("sourceType", sourceType);
+        formData.append("targets", JSON.stringify(targets));
+        formData.append("profile", JSON.stringify({
           tone: "conversational",
           audience: "general",
           purpose: "inform"
-        }
-      };
+        }));
 
-      const response = await fetch(`${apiUrl}/orchestrator/process`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify(payload),
-      });
+        response = await fetch(`${apiUrl}/orchestrator/process`, {
+          method: "POST",
+          body: formData,
+        });
+      }
 
       if (!response.ok) {
         throw new Error(`API request failed: ${response.status}`);
