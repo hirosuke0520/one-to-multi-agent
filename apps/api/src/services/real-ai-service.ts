@@ -658,23 +658,84 @@ JSON形式のみで回答してください。
   }
 
   private async generateWordPressContent(
-    source: string | { filePath: string; sourceType: string },
+    source: string | { fileBuffer: Buffer; fileName: string; mimeType: string; sourceType: string },
     profile?: any
   ): Promise<WordPressContent> {
-    if (this.useRealAI && this.genAI) {
-      const sourceText = typeof source === "string" ? source : "AIがファイルから生成したコンテンツ";
-      const model = this.genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
-      
-      // Simplified approach for now
+    const prompt = typeof source === "string" ? `
+あなたはWordPressブログの編集者です。SEOを意識したクオリティの高いブログ記事を作成してください。
+
+【元となる文章】
+${source}
+
+【WordPress記事の要素】
+- タイトル: SEOキーワードを含む60文字以内
+- 抜粋: 記事の要約を160文字以内
+- 本文: HTML形式、見出しと段落で構造化
+- カテゴリ: 2-3個の適切なカテゴリ
+- タグ: 関連キーワード5-8個
+- SEO: メタディスクリプション
+
+【出力形式】
+{
+  "title": "記事タイトル（60文字以内）",
+  "excerpt": "記事の抜粋（160文字以内）",
+  "content": "HTML形式の本文",
+  "categories": ["カテゴリ1", "カテゴリ2"],
+  "tags": ["タグ1", "タグ2", "タグ3"],
+  "seoTitle": "SEO用タイトル",
+  "metaDescription": "メタディスクリプション"
+}
+
+JSON形式のみで回答してください。
+` : `
+あなたはWordPressブログの編集者です。以下の${source.sourceType === "video" ? "動画" : "音声"}を分析し、SEOを意識したクオリティの高いブログ記事を作成してください。
+
+【WordPress記事の要素】
+- タイトル: SEOキーワードを含む60文字以内
+- 抜粋: 記事の要約を160文字以内
+- 本文: HTML形式、見出しと段落で構造化
+- カテゴリ: 2-3個の適切なカテゴリ
+- タグ: 関連キーワード5-8個
+- SEO: メタディスクリプション
+
+【出力形式】
+{
+  "title": "記事タイトル（60文字以内）",
+  "excerpt": "記事の抜粋（160文字以内）",
+  "content": "HTML形式の本文",
+  "categories": ["カテゴリ1", "カテゴリ2"],
+  "tags": ["タグ1", "タグ2", "タグ3"],
+  "seoTitle": "SEO用タイトル",
+  "metaDescription": "メタディスクリプション"
+}
+
+JSON形式のみで回答してください。
+`;
+
+    try {
+      const parsed = await this.generateContentWithPrompt(source, prompt, "wordpress");
       return {
         platform: "wordpress",
-        title: sourceText.substring(0, 60) || "AI生成記事",
-        excerpt: sourceText.substring(0, 160) || "AI により生成された記事の抜粋",
-        content: `# ${sourceText.substring(0, 60)}\n\n${typeof source === "string" ? source : "AI generated content"}`,
-        categories: ["技術", "AI"],
-        tags: ["新技術", "イノベーション"],
-        seoTitle: sourceText.substring(0, 60) || "AI生成記事",
-        metaDescription: sourceText.substring(0, 160) || "AI により生成された記事"
+        title: parsed.title || (typeof source === "string" ? source.substring(0, 60) : "AI生成記事"),
+        excerpt: parsed.excerpt || (typeof source === "string" ? source.substring(0, 160) : "AI生成の記事抜粋"),
+        content: parsed.content || `<h1>${parsed.title || "AI生成記事"}</h1><p>${typeof source === "string" ? source : "AI生成コンテンツ"}</p>`,
+        categories: Array.isArray(parsed.categories) ? parsed.categories : ["技術", "AI"],
+        tags: Array.isArray(parsed.tags) ? parsed.tags : ["AI", "自動生成", "技術"],
+        seoTitle: parsed.seoTitle || parsed.title || (typeof source === "string" ? source.substring(0, 60) : "AI生成記事"),
+        metaDescription: parsed.metaDescription || parsed.excerpt || (typeof source === "string" ? source.substring(0, 160) : "AI生成の記事")
+      };
+    } catch (error) {
+      console.error("Error generating WordPress content:", error);
+      // Fallback
+      return {
+        platform: "wordpress",
+        title: typeof source === "string" ? source.substring(0, 60) || "AI生成記事" : "AI生成記事",
+        excerpt: typeof source === "string" ? source.substring(0, 160) || "AI生成記事の抜粋" : "AI生成記事の抜粋",
+        content: `<h1>AI生成記事</h1><p>${typeof source === "string" ? source : "AIで生成されたコンテンツです。"}</p>`,
+        categories: ["AI", "技術"],
+        tags: ["AI", "自動生成", "技術"],
+        seoTitle: "AI生成記事",
+        metaDescription: "AI生成記事の抜粋"
       };
     }
     
@@ -682,17 +743,32 @@ JSON形式のみで回答してください。
   }
 
   private async generateInstagramContent(
-    source: string | { filePath: string; sourceType: string },
+    source: string | { fileBuffer: Buffer; fileName: string; mimeType: string; sourceType: string },
     profile?: any
   ): Promise<InstagramContent> {
-    if (this.useRealAI && this.genAI) {
-      const model = this.genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
-      
-      const prompt = `
+    const prompt = typeof source === "string" ? `
 あなたはInstagramマーケティングのエキスパートです。ビジュアルコンテンツとの相性を重視した魅力的な投稿を作成してください。
 
 【元となる文章】
-${typeof source === "string" ? source : "AI generated content"}
+${source}
+
+【Instagram投稿の特徴】
+- キャプション2200文字制限
+- ビジュアルとの組み合わせを意識
+- ストーリー性のある構成
+- ハッシュタグ最大30個（効果的なものを厳選）
+- エンゲージメントを促す質問やCTA
+
+【出力形式】
+{
+  "caption": "投稿キャプション（ビジュアルとの組み合わせを意識）",
+  "hashtags": ["関連ハッシュタグ1", "ハッシュタグ2", "ハッシュタグ3"],
+  "altText": "画像の代替テキスト（アクセシビリティ対応）"
+}
+
+JSON形式のみで回答してください。
+` : `
+あなたはInstagramマーケティングのエキスパートです。以下の${source.sourceType === "video" ? "動画" : "音声"}を分析し、ビジュアルコンテンツとの相性を重視した魅力的な投稿を作成してください。
 
 【Instagram投稿の特徴】
 - キャプション2200文字制限
@@ -711,41 +787,55 @@ ${typeof source === "string" ? source : "AI generated content"}
 JSON形式のみで回答してください。
 `;
 
-      try {
-        const result = await model.generateContent(prompt);
-        const response = await result.response;
-        const text = response.text();
-        const jsonMatch = text.match(/\{[\s\S]*\}/);
-        
-        if (jsonMatch) {
-          const parsed = JSON.parse(jsonMatch[0]);
-          return {
-            platform: "instagram",
-            caption: parsed.caption || (typeof source === "string" ? source.substring(0, 2200) : "AI生成コンテンツ"),
-            hashtags: Array.isArray(parsed.hashtags) ? parsed.hashtags.slice(0, 30) : ["技術", "開発"],
-            altText: parsed.altText || (typeof source === "string" ? source.substring(0, 100) : "AI生成")
-          };
-        }
-      } catch (error) {
-        console.error("Gemini API error for Instagram:", error);
-      }
+    try {
+      const parsed = await this.generateContentWithPrompt(source, prompt, "instagram");
+      return {
+        platform: "instagram",
+        caption: parsed.caption || (typeof source === "string" ? source.substring(0, 2200) : "AI生成Instagram投稿"),
+        hashtags: Array.isArray(parsed.hashtags) ? parsed.hashtags.slice(0, 30) : ["AI", "技術", "自動生成"],
+        altText: parsed.altText || (typeof source === "string" ? source.substring(0, 100) : "AI生成コンテンツの画像")
+      };
+    } catch (error) {
+      console.error("Error generating Instagram content:", error);
+      // Fallback
+      return {
+        platform: "instagram",
+        caption: typeof source === "string" ? source.substring(0, 2200) : "AI生成Instagram投稿",
+        hashtags: ["AI", "技術", "自動生成"],
+        altText: typeof source === "string" ? source.substring(0, 100) : "AI生成コンテンツの画像"
+      };
     }
     
     throw new Error("AI service not available");
   }
 
   private async generateTikTokContent(
-    source: string | { filePath: string; sourceType: string },
+    source: string | { fileBuffer: Buffer; fileName: string; mimeType: string; sourceType: string },
     profile?: any
   ): Promise<TikTokContent> {
-    if (this.useRealAI && this.genAI) {
-      const model = this.genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
-      
-      const prompt = `
+    const prompt = typeof source === "string" ? `
 あなたはTikTokコンテンツクリエイターです。バイラル性とエンターテイメント性を重視した短時間で訴求力のある動画キャプションを作成してください。
 
 【元となる文章】
-${typeof source === "string" ? source : "AI generated content"}
+${source}
+
+【TikTok投稿の特徴】
+- キャプション300文字制限
+- 若い世代に刺さる表現
+- トレンドやバイラル要素を意識
+- 短く印象的なフレーズ
+- エンターテイメント性重視
+
+【出力形式】
+{
+  "caption": "TikTok用キャプション（300文字以内）",
+  "hashtags": ["トレンドハッシュタグ1", "ハッシュタグ2", "ハッシュタグ3"],
+  "effects": ["推奨エフェクト1", "エフェクト2"]
+}
+
+JSON形式のみで回答してください。
+` : `
+あなたはTikTokコンテンツクリエイターです。以下の${source.sourceType === "video" ? "動画" : "音声"}を分析し、バイラル性とエンターテイメント性を重視した短時間で訴求力のある動画キャプションを作成してください。
 
 【TikTok投稿の特徴】
 - キャプション300文字制限
@@ -764,24 +854,23 @@ ${typeof source === "string" ? source : "AI generated content"}
 JSON形式のみで回答してください。
 `;
 
-      try {
-        const result = await model.generateContent(prompt);
-        const response = await result.response;
-        const text = response.text();
-        const jsonMatch = text.match(/\{[\s\S]*\}/);
-        
-        if (jsonMatch) {
-          const parsed = JSON.parse(jsonMatch[0]);
-          return {
-            platform: "tiktok",
-            caption: parsed.caption || (typeof source === "string" ? source.substring(0, 300) : "AI生成コンテンツ"),
-            hashtags: Array.isArray(parsed.hashtags) ? parsed.hashtags.slice(0, 5) : ["技術", "開発"],
-            effects: Array.isArray(parsed.effects) ? parsed.effects : ["トレンド", "バイラル"]
-          };
-        }
-      } catch (error) {
-        console.error("Gemini API error for TikTok:", error);
-      }
+    try {
+      const parsed = await this.generateContentWithPrompt(source, prompt, "tiktok");
+      return {
+        platform: "tiktok",
+        caption: parsed.caption || (typeof source === "string" ? source.substring(0, 300) : "AI生成TikTok動画"),
+        hashtags: Array.isArray(parsed.hashtags) ? parsed.hashtags.slice(0, 5) : ["AI", "技術", "トレンド"],
+        effects: Array.isArray(parsed.effects) ? parsed.effects : ["Glitch Effect", "Sparkle"]
+      };
+    } catch (error) {
+      console.error("Error generating TikTok content:", error);
+      // Fallback
+      return {
+        platform: "tiktok", 
+        caption: typeof source === "string" ? source.substring(0, 300) : "AI生成TikTok動画",
+        hashtags: ["AI", "技術", "トレンド"],
+        effects: ["Glitch Effect", "Sparkle"]
+      };
     }
     
     throw new Error("AI service not available");

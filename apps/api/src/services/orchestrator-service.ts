@@ -87,6 +87,44 @@ export class OrchestratorService {
     return jobId;
   }
 
+  async createJobs(request: ProcessJobRequest): Promise<{ jobs: Array<{ jobId: string; platform: string }> }> {
+    const jobs: Array<{ jobId: string; platform: string }> = [];
+    
+    // Create separate job for each target platform
+    for (const target of request.targets) {
+      const jobId = uuidv4();
+      
+      // Store buffer separately in memory (shared across all jobs for this request)
+      if (request.fileBuffer) {
+        this.fileBuffers.set(jobId, request.fileBuffer);
+      }
+      
+      const job: Job = {
+        id: jobId,
+        sourceType: request.sourceType,
+        targets: [target], // Single platform per job
+        status: "pending",
+        createdAt: new Date(),
+        updatedAt: new Date(),
+        fileName: request.fileName,
+        mimeType: request.mimeType,
+      };
+
+      await this.jobService.saveJob(job);
+      
+      // Create individual request for this job
+      const individualRequest: ProcessJobRequest = {
+        ...request,
+        targets: [target] // Single platform per request
+      };
+      await this.jobService.saveJobRequest(jobId, individualRequest);
+      
+      jobs.push({ jobId, platform: target });
+    }
+    
+    return { jobs };
+  }
+
   async processJob(jobId: string): Promise<void> {
     try {
       await this.updateJobStatus(jobId, "processing");
@@ -115,33 +153,23 @@ export class OrchestratorService {
         };
       }
 
-      // Step 2: Generate platform-specific content
-      const platformResults = [];
-      
-      for (const target of request.targets) {
-        try {
-          const platformContent = await this.contentService.generatePlatformContent(
-            sourceContent,
-            target,
-            request.profile
-          );
-          
-          // Store generated content without publishing yet
-          platformResults.push({
-            platform: target,
-            success: true,
-            content: platformContent,
-            // Note: Publishing is now separate from content generation
-          });
-        } catch (error) {
-          console.error(`Failed to process ${target}:`, error);
-          platformResults.push({
-            platform: target,
-            success: false,
-            error: error instanceof Error ? error.message : "Unknown error",
-          });
-        }
+      // Step 2: Generate platform-specific content (single platform per job)
+      const target = request.targets[0]; // Single platform per job now
+      if (!target) {
+        throw new Error("No target platform specified");
       }
+
+      const platformContent = await this.contentService.generatePlatformContent(
+        sourceContent,
+        target,
+        request.profile
+      );
+      
+      const platformResults = [{
+        platform: target,
+        success: true,
+        content: platformContent,
+      }];
 
       // Step 3: Save results
       const sourceText = typeof sourceContent === "string" ? sourceContent : 

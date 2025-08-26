@@ -43,7 +43,7 @@ orchestrator.post(
         const buffer = Buffer.from(arrayBuffer);
         
         const orchestratorService = new OrchestratorService();
-        const jobId = await orchestratorService.createJob({
+        const { jobs } = await orchestratorService.createJobs({
           sourceType: sourceType as "audio" | "video",
           fileBuffer: buffer, // Pass buffer directly instead of file path
           fileName: uploadedFile.name,
@@ -52,15 +52,20 @@ orchestrator.post(
           profile,
         });
 
-        // Start processing in background
-        orchestratorService.processJob(jobId).catch(error => {
-          console.error(`Job ${jobId} failed:`, error);
+        // Start processing all jobs in parallel
+        jobs.forEach(({ jobId, platform }) => {
+          orchestratorService.processJob(jobId).catch(error => {
+            console.error(`Job ${jobId} for ${platform} failed:`, error);
+          });
         });
 
         return c.json({
           success: true,
-          jobId,
-          message: "Processing started",
+          jobs: jobs.map(job => ({
+            jobId: job.jobId,
+            platform: job.platform
+          })),
+          message: "Processing started for all platforms",
         });
       } else {
         // Handle JSON (text content)
@@ -78,22 +83,27 @@ orchestrator.post(
         const { sourceType, content, targets, profile } = validation.data;
         
         const orchestratorService = new OrchestratorService();
-        const jobId = await orchestratorService.createJob({
+        const { jobs } = await orchestratorService.createJobs({
           sourceType,
           content,
           targets,
           profile,
         });
 
-        // Start processing in background
-        orchestratorService.processJob(jobId).catch(error => {
-          console.error(`Job ${jobId} failed:`, error);
+        // Start processing all jobs in parallel
+        jobs.forEach(({ jobId, platform }) => {
+          orchestratorService.processJob(jobId).catch(error => {
+            console.error(`Job ${jobId} for ${platform} failed:`, error);
+          });
         });
 
         return c.json({
           success: true,
-          jobId,
-          message: "Processing started",
+          jobs: jobs.map(job => ({
+            jobId: job.jobId,
+            platform: job.platform
+          })),
+          message: "Processing started for all platforms",
         });
       }
     } catch (error) {

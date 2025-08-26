@@ -12,6 +12,7 @@ export default function Home() {
   const [results, setResults] = useState<any>(null);
   const [editableContent, setEditableContent] = useState<Record<string, any>>({});
   const [error, setError] = useState<string | null>(null);
+  const [jobProgress, setJobProgress] = useState<{ completed: number; total: number } | null>(null);
 
   const handleTargetToggle = (target: string) => {
     setTargets(prev => 
@@ -88,9 +89,19 @@ export default function Home() {
       const data = await response.json();
       
       if (data.success) {
-        setJobId(data.jobId);
-        // Poll for results
-        pollForResults(data.jobId);
+        if (data.jobs && Array.isArray(data.jobs)) {
+          // New multi-job format
+          const jobIds = data.jobs.map((job: { jobId: string; platform: string }) => job.jobId);
+          setJobId(jobIds.join(',')); // Store all job IDs for reference
+          // Poll for results from all jobs
+          pollForMultipleResults(data.jobs);
+        } else if (data.jobId) {
+          // Legacy single job format (backwards compatibility)
+          setJobId(data.jobId);
+          pollForResults(data.jobId);
+        } else {
+          throw new Error("No job IDs returned from API");
+        }
       } else {
         throw new Error(data.error || "Failed to start processing");
       }
@@ -100,9 +111,99 @@ export default function Home() {
     }
   };
 
+  const pollForMultipleResults = async (jobs: Array<{ jobId: string; platform: string }>) => {
+    const apiUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8787";
+    const maxAttempts = 120; // 10 minutes max (120 * 3 seconds)
+    let attempts = 0;
+    const completedJobs = new Set<string>();
+    const allPlatformResults: any[] = [];
+    
+    // Initialize progress
+    setJobProgress({ completed: 0, total: jobs.length });
+
+    const pollAllJobs = async () => {
+      try {
+        attempts++;
+        let allCompleted = true;
+
+        for (const job of jobs) {
+          if (completedJobs.has(job.jobId)) {
+            continue; // Skip already completed jobs
+          }
+
+          const response = await fetch(`${apiUrl}/jobs/${job.jobId}`);
+          if (!response.ok) {
+            throw new Error(`Failed to fetch job status for ${job.platform}`);
+          }
+
+          const jobData = await response.json();
+          
+          if (jobData.success && jobData.job.status === "completed") {
+            // Get results for this job
+            const resultsResponse = await fetch(`${apiUrl}/jobs/${job.jobId}/results`);
+            if (resultsResponse.ok) {
+              const resultsData = await resultsResponse.json();
+              if (resultsData.success && resultsData.results?.platformResults) {
+                allPlatformResults.push(...resultsData.results.platformResults);
+              }
+            }
+            completedJobs.add(job.jobId);
+          } else if (jobData.success && jobData.job.status === "failed") {
+            // Add failed job to results
+            allPlatformResults.push({
+              platform: job.platform,
+              success: false,
+              error: jobData.job.error || "Job failed"
+            });
+            completedJobs.add(job.jobId);
+          } else {
+            allCompleted = false;
+          }
+        }
+
+        // Update progress
+        setJobProgress({ completed: completedJobs.size, total: jobs.length });
+
+        if (allCompleted || completedJobs.size === jobs.length) {
+          // All jobs completed, set results
+          const combinedResults = {
+            sourceText: "Multiple platform processing",
+            platformResults: allPlatformResults
+          };
+          setResults(combinedResults);
+
+          // Initialize editable content from platform results
+          const initialEditableContent: Record<string, any> = {};
+          allPlatformResults.forEach((platformResult: any) => {
+            if (platformResult.success && platformResult.content) {
+              initialEditableContent[platformResult.platform] = { ...platformResult.content.content };
+            }
+          });
+          setEditableContent(initialEditableContent);
+          setJobProgress(null);
+          setIsProcessing(false);
+        } else if (attempts >= maxAttempts) {
+          setError("Timeout: Some jobs took too long to complete");
+          setJobProgress(null);
+          setIsProcessing(false);
+        } else {
+          // Continue polling
+          setTimeout(pollAllJobs, 3000); // Poll every 3 seconds for faster updates
+        }
+      } catch (error) {
+        console.error("Error polling jobs:", error);
+        setError(error instanceof Error ? error.message : "Failed to fetch job results");
+        setJobProgress(null);
+        setIsProcessing(false);
+      }
+    };
+
+    pollAllJobs();
+  };
+
   const pollForResults = async (jobId: string) => {
     const apiUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8787";
-    const maxAttempts = 30; // 5 minutes max
+    const maxAttempts = 120; // 10 minutes max (120 * 10 seconds)
     let attempts = 0;
 
     const poll = async () => {
