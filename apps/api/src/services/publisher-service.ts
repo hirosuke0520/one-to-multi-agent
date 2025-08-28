@@ -1,4 +1,4 @@
-import { PlatformContent } from "./real-ai-service";
+import { PlatformContent } from "./types";
 
 export interface PublishResult {
   success: boolean;

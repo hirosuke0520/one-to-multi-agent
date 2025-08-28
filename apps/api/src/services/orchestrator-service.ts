@@ -3,6 +3,7 @@ import { JobService } from "./job-service";
 import { TranscriberService } from "./transcriber-service";
 import { ContentService } from "./content-service";
 import { PublisherService } from "./publisher-service";
+import { ContentSource } from "./types";
 
 export interface ProcessJobRequest {
   sourceType: "text" | "audio" | "video";
@@ -29,6 +30,7 @@ export interface Job {
   error?: string;
   fileName?: string; // For audio/video files metadata (buffer stored separately in memory)
   mimeType?: string;
+  fileBuffer?: Buffer; // In-memory buffer, not saved to JSON
 }
 
 export interface CanonicalContent {
@@ -135,7 +137,7 @@ export class OrchestratorService {
       }
 
       // Step 1: Get content (text directly, or file buffer for AI processing)
-      let sourceContent: string | { fileBuffer: Buffer; fileName: string; mimeType: string; sourceType: string };
+      let sourceContent: ContentSource;
       
       if (request.sourceType === "text") {
         sourceContent = request.content || "";
