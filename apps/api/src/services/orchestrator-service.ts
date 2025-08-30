@@ -3,7 +3,7 @@ import { JobService } from "./job-service";
 import { TranscriberService } from "./transcriber-service";
 import { ContentService } from "./content-service";
 import { PublisherService } from "./publisher-service";
-import { ContentSource } from "./types";
+import { ContentSource } from "@one-to-multi-agent/core";
 
 export interface ProcessJobRequest {
   sourceType: "text" | "audio" | "video";

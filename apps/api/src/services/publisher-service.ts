@@ -1,4 +1,4 @@
-import { PlatformContent } from "./types";
+import { PlatformContent } from "@one-to-multi-agent/core";
 
 export interface PublishResult {
   success: boolean;

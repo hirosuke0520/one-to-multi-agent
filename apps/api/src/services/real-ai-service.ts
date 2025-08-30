@@ -15,7 +15,7 @@ import {
   WordPressContent,
   InstagramContent,
   TikTokContent
-} from "./types";
+} from "@one-to-multi-agent/core";
 
 export class RealAIService {
   private genAI: GoogleGenerativeAI | null = null;
