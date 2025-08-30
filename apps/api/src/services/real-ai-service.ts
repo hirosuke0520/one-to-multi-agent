@@ -193,9 +193,19 @@ JSON形式のみで回答してください。`;
       const parsed = typeof source === 'string'
         ? await this.generateFromText(prompt)
         : await this.generateFromFile(prompt, source);
-      return { platform: "threads", ...parsed };
+      
+      return { 
+        platform: "threads", 
+        text: parsed.text || "Threadsコンテンツの生成に失敗しました。",
+        hashtags: Array.isArray(parsed.hashtags) ? parsed.hashtags : ["エラー"]
+      };
     } catch (error) {
-      return { platform: "threads", text: "Threadsコンテンツの生成に失敗しました。", hashtags: ["エラー"] };
+      console.error("Threads content generation error:", error);
+      return { 
+        platform: "threads", 
+        text: "Threadsコンテンツの生成に失敗しました。", 
+        hashtags: ["エラー"] 
+      };
     }
   }
 
@@ -217,13 +227,22 @@ JSON形式のみで回答してください。`;
         ? await this.generateFromText(prompt)
         : await this.generateFromFile(prompt, source);
       
-      let tweetText = parsed.text || "";
+      let tweetText = parsed.text || "Twitterコンテンツの生成に失敗しました。";
       if (tweetText.length > 140) {
         tweetText = tweetText.substring(0, 137) + "...";
       }
-      return { platform: "twitter", text: tweetText, hashtags: parsed.hashtags || [] };
+      return { 
+        platform: "twitter", 
+        text: tweetText, 
+        hashtags: Array.isArray(parsed.hashtags) ? parsed.hashtags : [] 
+      };
     } catch (error) {
-      return { platform: "twitter", text: "Twitterコンテンツの生成に失敗しました。", hashtags: ["エラー"] };
+      console.error("Twitter content generation error:", error);
+      return { 
+        platform: "twitter", 
+        text: "Twitterコンテンツの生成に失敗しました。", 
+        hashtags: ["エラー"] 
+      };
     }
   }
 
@@ -237,6 +256,7 @@ ${typeof source === 'string' ? source : '添付ファイルを参照'}
 {
   "title": "YouTubeタイトル（60文字以内）",
   "description": "詳細な概要欄の内容",
+  "script": "動画の台本やナレーション（オプション）",
   "chapters": [{"time": "00:00", "title": "イントロ"}, {"time": "01:00", "title": "本題"}],
   "hashtags": ["YouTube用ハッシュタグ1", "タグ2"]
 }
@@ -246,9 +266,24 @@ JSON形式のみで回答してください。`;
       const parsed = typeof source === 'string'
         ? await this.generateFromText(prompt)
         : await this.generateFromFile(prompt, source);
-      return { platform: "youtube", ...parsed };
+      
+      return { 
+        platform: "youtube", 
+        title: parsed.title || "YouTubeコンテンツ",
+        description: parsed.description || "",
+        script: parsed.script || undefined,
+        chapters: Array.isArray(parsed.chapters) ? parsed.chapters : [],
+        hashtags: Array.isArray(parsed.hashtags) ? parsed.hashtags : []
+      };
     } catch (error) {
-      return { platform: "youtube", title: "YouTubeコンテンツ生成エラー", description: "", chapters: [], hashtags: ["エラー"] };
+      console.error("YouTube content generation error:", error);
+      return { 
+        platform: "youtube", 
+        title: "YouTubeコンテンツ生成エラー", 
+        description: "コンテンツの生成中にエラーが発生しました。", 
+        chapters: [], 
+        hashtags: ["エラー"] 
+      };
     }
   }
 
@@ -274,9 +309,27 @@ JSON形式のみで回答してください。`;
       const parsed = typeof source === 'string'
         ? await this.generateFromText(prompt)
         : await this.generateFromFile(prompt, source);
-      return { platform: "wordpress", ...parsed };
+      
+      return { 
+        platform: "wordpress",
+        title: parsed.title || "WordPress記事の生成に失敗しました。",
+        excerpt: parsed.excerpt || "",
+        content: parsed.content || "",
+        categories: Array.isArray(parsed.categories) ? parsed.categories : [],
+        tags: Array.isArray(parsed.tags) ? parsed.tags : ["エラー"],
+        seoTitle: parsed.seoTitle || undefined,
+        metaDescription: parsed.metaDescription || undefined
+      };
     } catch (error) {
-      return { platform: "wordpress", title: "WordPress記事の生成に失敗しました。", excerpt: "", content: "", categories: [], tags: ["エラー"] };
+      console.error("WordPress content generation error:", error);
+      return { 
+        platform: "wordpress", 
+        title: "WordPress記事の生成に失敗しました。", 
+        excerpt: "", 
+        content: "", 
+        categories: [], 
+        tags: ["エラー"] 
+      };
     }
   }
 
@@ -298,9 +351,21 @@ JSON形式のみで回答してください。`;
       const parsed = typeof source === 'string'
         ? await this.generateFromText(prompt)
         : await this.generateFromFile(prompt, source);
-      return { platform: "instagram", ...parsed };
+      
+      return { 
+        platform: "instagram",
+        caption: parsed.caption || "Instagramコンテンツの生成に失敗しました。",
+        hashtags: Array.isArray(parsed.hashtags) ? parsed.hashtags : ["エラー"],
+        altText: parsed.altText || undefined
+      };
     } catch (error) {
-      return { platform: "instagram", caption: "Instagramコンテンツの生成に失敗しました。", hashtags: ["エラー"], altText: "" };
+      console.error("Instagram content generation error:", error);
+      return { 
+        platform: "instagram", 
+        caption: "Instagramコンテンツの生成に失敗しました。", 
+        hashtags: ["エラー"],
+        altText: undefined
+      };
     }
   }
 
@@ -322,9 +387,21 @@ JSON形式のみで回答してください。`;
       const parsed = typeof source === 'string'
         ? await this.generateFromText(prompt)
         : await this.generateFromFile(prompt, source);
-      return { platform: "tiktok", ...parsed };
+      
+      return { 
+        platform: "tiktok",
+        caption: parsed.caption || "TikTokコンテンツの生成に失敗しました。",
+        hashtags: Array.isArray(parsed.hashtags) ? parsed.hashtags : ["エラー"],
+        effects: Array.isArray(parsed.effects) ? parsed.effects : undefined
+      };
     } catch (error) {
-      return { platform: "tiktok", caption: "TikTokコンテンツの生成に失敗しました。", hashtags: ["エラー"], effects: [] };
+      console.error("TikTok content generation error:", error);
+      return { 
+        platform: "tiktok", 
+        caption: "TikTokコンテンツの生成に失敗しました。", 
+        hashtags: ["エラー"],
+        effects: undefined
+      };
     }
   }
 }
