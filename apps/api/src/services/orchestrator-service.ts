@@ -3,12 +3,14 @@ import { JobService } from "./job-service";
 import { TranscriberService } from "./transcriber-service";
 import { ContentService } from "./content-service";
 import { PublisherService } from "./publisher-service";
+import { StorageService, StoredFile } from "./storage-service";
 import { ContentSource } from "@one-to-multi-agent/core";
 
 export interface ProcessJobRequest {
   sourceType: "text" | "audio" | "video";
   content?: string;
-  fileBuffer?: Buffer; // For audio/video files as buffer
+  fileBuffer?: Buffer; // For initial upload (will be stored to GCS)
+  storedFile?: StoredFile; // For stored files (replaces fileBuffer in processing)
   fileName?: string;
   mimeType?: string;
   targets: string[];
@@ -28,9 +30,7 @@ export interface Job {
   createdAt: Date;
   updatedAt: Date;
   error?: string;
-  fileName?: string; // For audio/video files metadata (buffer stored separately in memory)
-  mimeType?: string;
-  fileBuffer?: Buffer; // In-memory buffer, not saved to JSON
+  storedFile?: StoredFile; // Reference to stored file in GCS
 }
 
 export interface CanonicalContent {
@@ -52,21 +52,28 @@ export class OrchestratorService {
   private transcriberService: TranscriberService;
   private contentService: ContentService;
   private publisherService: PublisherService;
-  private fileBuffers: Map<string, Buffer> = new Map(); // In-memory buffer storage
+  private storageService: StorageService;
 
   constructor() {
     this.jobService = new JobService();
     this.transcriberService = new TranscriberService();
     this.contentService = new ContentService();
     this.publisherService = new PublisherService();
+    this.storageService = new StorageService();
   }
 
   async createJob(request: ProcessJobRequest): Promise<string> {
     const jobId = uuidv4();
     
-    // Store buffer separately in memory
-    if (request.fileBuffer) {
-      this.fileBuffers.set(jobId, request.fileBuffer);
+    let storedFile: StoredFile | undefined;
+    
+    // Store file to storage service if it's an audio/video file
+    if (request.fileBuffer && request.fileName && request.mimeType) {
+      storedFile = await this.storageService.uploadFile(
+        request.fileBuffer,
+        request.fileName,
+        request.mimeType
+      );
     }
     
     const job: Job = {
@@ -76,15 +83,18 @@ export class OrchestratorService {
       status: "pending",
       createdAt: new Date(),
       updatedAt: new Date(),
-      fileName: request.fileName,
-      mimeType: request.mimeType,
-      // Note: fileBuffer is stored separately in memory, not in JSON
+      storedFile,
     };
 
     await this.jobService.saveJob(job);
     
-    // Store the original request for processing
-    await this.jobService.saveJobRequest(jobId, request);
+    // Store the modified request (without fileBuffer) for processing
+    const requestForStorage: ProcessJobRequest = {
+      ...request,
+      fileBuffer: undefined, // Don't store buffer in job request
+      storedFile,
+    };
+    await this.jobService.saveJobRequest(jobId, requestForStorage);
     
     return jobId;
   }
@@ -92,14 +102,20 @@ export class OrchestratorService {
   async createJobs(request: ProcessJobRequest): Promise<{ jobs: Array<{ jobId: string; platform: string }> }> {
     const jobs: Array<{ jobId: string; platform: string }> = [];
     
+    let storedFile: StoredFile | undefined;
+    
+    // Upload file once and share across all jobs
+    if (request.fileBuffer && request.fileName && request.mimeType) {
+      storedFile = await this.storageService.uploadFile(
+        request.fileBuffer,
+        request.fileName,
+        request.mimeType
+      );
+    }
+    
     // Create separate job for each target platform
     for (const target of request.targets) {
       const jobId = uuidv4();
-      
-      // Store buffer separately in memory (shared across all jobs for this request)
-      if (request.fileBuffer) {
-        this.fileBuffers.set(jobId, request.fileBuffer);
-      }
       
       const job: Job = {
         id: jobId,
@@ -108,15 +124,16 @@ export class OrchestratorService {
         status: "pending",
         createdAt: new Date(),
         updatedAt: new Date(),
-        fileName: request.fileName,
-        mimeType: request.mimeType,
+        storedFile, // Shared file reference
       };
 
       await this.jobService.saveJob(job);
       
-      // Create individual request for this job
+      // Create individual request for this job (without fileBuffer)
       const individualRequest: ProcessJobRequest = {
         ...request,
+        fileBuffer: undefined, // Don't store buffer in job request
+        storedFile,
         targets: [target] // Single platform per request
       };
       await this.jobService.saveJobRequest(jobId, individualRequest);
@@ -128,6 +145,8 @@ export class OrchestratorService {
   }
 
   async processJob(jobId: string): Promise<void> {
+    let fileBuffer: Buffer | undefined;
+    
     try {
       await this.updateJobStatus(jobId, "processing");
       
@@ -136,21 +155,32 @@ export class OrchestratorService {
         throw new Error("Job request not found");
       }
 
-      // Step 1: Get content (text directly, or file buffer for AI processing)
+      // Step 1: Get content (text directly, or download file buffer from storage)
       let sourceContent: ContentSource;
       
       if (request.sourceType === "text") {
         sourceContent = request.content || "";
       } else {
-        // For audio/video, get buffer from memory and pass to AI
-        const fileBuffer = this.fileBuffers.get(jobId);
-        if (!fileBuffer || !request.fileName || !request.mimeType) {
-          throw new Error("File buffer, name, and mime type are required for audio/video content");
+        // For audio/video, download from storage service
+        if (!request.storedFile) {
+          throw new Error("Stored file reference is required for audio/video content");
         }
+        
+        const downloadedBuffer = await this.storageService.downloadFile(
+          request.storedFile.fileId,
+          request.storedFile.gcsPath
+        );
+        
+        if (!downloadedBuffer) {
+          throw new Error("Failed to download file from storage");
+        }
+        
+        fileBuffer = downloadedBuffer;
+        
         sourceContent = {
           fileBuffer: fileBuffer,
-          fileName: request.fileName,
-          mimeType: request.mimeType,
+          fileName: request.storedFile.fileName,
+          mimeType: request.storedFile.mimeType,
           sourceType: request.sourceType
         };
       }
@@ -188,8 +218,10 @@ export class OrchestratorService {
       console.error(`Job ${jobId} failed:`, error);
       await this.updateJobStatus(jobId, "failed", error instanceof Error ? error.message : "Unknown error");
     } finally {
-      // Clean up buffer from memory after processing (success or failure)
-      this.fileBuffers.delete(jobId);
+      // Clean up file buffer from memory
+      if (fileBuffer) {
+        fileBuffer = undefined;
+      }
     }
   }
 

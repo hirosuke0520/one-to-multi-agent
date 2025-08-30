@@ -11,6 +11,7 @@
     "lint": "eslint src --ext .ts,.tsx"
   },
   "dependencies": {
+    "@google-cloud/storage": "^7.17.0",
     "@google/generative-ai": "^0.21.0",
     "@hono/node-server": "^1.0.0",
     "ffmpeg-static": "^5.2.0",
