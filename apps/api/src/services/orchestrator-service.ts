@@ -1,9 +1,9 @@
 import { v4 as uuidv4 } from "uuid";
-import { JobService } from "./job-service";
-import { TranscriberService } from "./transcriber-service";
-import { ContentService } from "./content-service";
-import { PublisherService } from "./publisher-service";
-import { StorageService, StoredFile } from "./storage-service";
+import { JobService } from "./job-service.js";
+import { TranscriberService } from "./transcriber-service.js";
+import { ContentService } from "./content-service.js";
+import { PublisherService } from "./publisher-service.js";
+import { StorageService, StoredFile } from "./storage-service.js";
 import { ContentSource } from "@one-to-multi-agent/core";
 
 export interface ProcessJobRequest {

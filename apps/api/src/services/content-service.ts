@@ -1,6 +1,6 @@
 import { v4 as uuidv4 } from "uuid";
-import { CanonicalContent, ProcessJobRequest } from "./orchestrator-service";
-import { RealAIService } from "./real-ai-service";
+import { CanonicalContent, ProcessJobRequest } from "./orchestrator-service.js";
+import { RealAIService } from "./real-ai-service.js";
 import { ContentSource, PlatformContent } from "@one-to-multi-agent/core";
 
 // ContentService用の共通プラットフォームコンテンツ

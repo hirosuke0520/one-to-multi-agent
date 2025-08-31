@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import { PlatformContent } from '@one-to-multi-agent/core';
+import { getApiUrl } from '../lib/config';
 
 // Type definitions for API responses and states
 export interface Job {
@@ -53,7 +54,7 @@ export const useContentGenerator = () => {
     setEditableContent({});
 
     try {
-      const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8787';
+      const apiUrl = getApiUrl();
       let response: Response;
 
       if (sourceType === 'text') {
@@ -92,7 +93,7 @@ export const useContentGenerator = () => {
   };
 
   const pollForMultipleResults = (jobs: Job[]) => {
-    const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8787';
+    const apiUrl = getApiUrl();
     const interval = setInterval(async () => {
       const statuses: JobStatus[] = await Promise.all(
         jobs.map(async (job) => {
@@ -116,7 +117,7 @@ export const useContentGenerator = () => {
   };
 
   const fetchFinalResults = async (jobs: Job[]) => {
-    const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8787';
+    const apiUrl = getApiUrl();
     const platformResults: PlatformResult[] = await Promise.all(
       jobs.map(async (job) => {
         try {

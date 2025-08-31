@@ -1,0 +1,8 @@
+steps:
+  # Build the container image
+  - name: 'gcr.io/cloud-builders/docker'
+    args: ['build', '-f', 'Dockerfile.web', '-t', 'asia-northeast1-docker.pkg.dev/one-to-multi-agent/one-to-multi-agent-repo/web:latest', '.']
+    
+# Push the container image to Container Registry
+images:
+  - 'asia-northeast1-docker.pkg.dev/one-to-multi-agent/one-to-multi-agent-repo/web:latest'

@@ -1,0 +1,59 @@
+# Production Dockerfile for Next.js Web App (simplified)
+FROM node:22-alpine AS base
+
+# Install dependencies
+FROM base AS deps
+RUN apk add --no-cache libc6-compat
+WORKDIR /app
+
+# Copy package files
+COPY package*.json ./
+COPY apps/web/package*.json ./apps/web/
+COPY packages/core/package*.json ./packages/core/
+
+# Install dependencies
+RUN npm ci --omit=dev && npm cache clean --force
+
+# Build the application
+FROM base AS builder
+WORKDIR /app
+COPY --from=deps /app/node_modules ./node_modules
+COPY . .
+
+# Install all dependencies and build
+RUN npm install
+RUN cd apps/web && npm run build
+
+# Production runner
+FROM base AS runner
+WORKDIR /app
+
+ENV NODE_ENV=production
+ENV NEXT_TELEMETRY_DISABLED=1
+ENV PORT=3000
+
+RUN addgroup --system --gid 1001 nodejs
+RUN adduser --system --uid 1001 nextjs
+
+# Copy built application and dependencies
+COPY --from=builder /app/node_modules ./node_modules
+COPY --from=builder /app/package*.json ./
+COPY --from=builder /app/apps/web/.next ./apps/web/.next
+COPY --from=builder /app/apps/web/public ./apps/web/public
+COPY --from=builder /app/apps/web/package*.json ./apps/web/
+COPY --from=builder /app/packages ./packages
+
+# Copy start script
+COPY --from=builder /app/apps/web/start.sh ./apps/web/start.sh
+RUN chmod +x ./apps/web/start.sh
+
+# Set correct permissions
+RUN chown -R nextjs:nodejs /app
+
+USER nextjs
+
+WORKDIR /app/apps/web
+
+EXPOSE 3000
+
+CMD ["./start.sh"]

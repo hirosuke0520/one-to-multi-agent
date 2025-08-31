@@ -1,5 +1,5 @@
-# Development Dockerfile for Hono API
-FROM node:18-alpine
+# Production Dockerfile for Cloud Run deployment
+FROM node:22-alpine
 
 # Install ffmpeg for video processing
 RUN apk add --no-cache ffmpeg
@@ -7,18 +7,27 @@ RUN apk add --no-cache ffmpeg
 # Set working directory
 WORKDIR /app
 
-# Install dependencies
+# Copy package files
 COPY package*.json ./
+
+# Install dependencies
 RUN npm install
 
-# Copy source code
+# Copy API source code
 COPY . .
 
-# Create data and temp directories
-RUN mkdir -p /app/data /app/temp
+# Build the application
+RUN npm run build
 
-# Expose port
-EXPOSE 8787
+# Create data directory for file storage (fallback when GCS is not available)
+RUN mkdir -p /app/data
 
-# Start development server
-CMD ["npm", "run", "dev"]
+# Set environment variables
+ENV NODE_ENV=production
+ENV PORT=8080
+
+# Expose port (Cloud Run expects 8080)
+EXPOSE 8080
+
+# Start production server
+CMD ["npm", "start"]

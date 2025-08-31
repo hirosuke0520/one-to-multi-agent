@@ -1,5 +1,5 @@
 import { Hono } from "hono";
-import { JobService } from "../services/job-service";
+import { JobService } from "../services/job-service.js";
 
 const jobs = new Hono();
 

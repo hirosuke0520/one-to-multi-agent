@@ -1,6 +1,6 @@
 import { Hono } from "hono";
 import { z } from "zod";
-import { OrchestratorService } from "../services/orchestrator-service";
+import { OrchestratorService } from "../services/orchestrator-service.js";
 
 const orchestrator = new Hono();
 

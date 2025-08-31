@@ -1,5 +1,5 @@
 import { Hono } from "hono";
-import { PublisherService } from "../services/publisher-service";
+import { PublisherService } from "../services/publisher-service.js";
 
 const publish = new Hono();
 const publisherService = new PublisherService();

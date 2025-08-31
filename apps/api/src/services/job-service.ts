@@ -1,6 +1,6 @@
 import fs from "fs-extra";
 import path from "path";
-import { Job, ProcessJobRequest, CanonicalContent } from "./orchestrator-service";
+import { Job, ProcessJobRequest, CanonicalContent } from "./orchestrator-service.js";
 
 export interface JobResults {
   sourceText: string;

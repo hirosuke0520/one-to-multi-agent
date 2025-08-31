@@ -1,14 +1,18 @@
 import { serve } from "@hono/node-server";
 import { Hono } from "hono";
 import { cors } from "hono/cors";
-import { orchestrator } from "./routes/orchestrator";
-import { jobs } from "./routes/jobs";
-import { publish } from "./routes/publish";
+import { orchestrator } from "./routes/orchestrator.js";
+import { jobs } from "./routes/jobs.js";
+import { publish } from "./routes/publish.js";
 
 const app = new Hono();
 
 app.use("*", cors({
-  origin: ["http://localhost:3000", "http://web:3000"],
+  origin: [
+    "http://localhost:3000", 
+    "http://web:3000",
+    "https://web-675967400701.asia-northeast1.run.app"
+  ],
   allowMethods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
   allowHeaders: ["Content-Type", "Authorization"],
   credentials: true,
