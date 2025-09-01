@@ -6,6 +6,7 @@ import { useHistory } from '../contexts/HistoryContext';
 interface ContentMetadata {
   id: string;
   sourceType: 'text' | 'audio' | 'video';
+  sourceText?: string;
   originalFileName?: string;
   duration?: number;
   size?: number;
@@ -52,22 +53,79 @@ export function Sidebar({ selectedThreadId, onThreadSelect, onNewChat, isOpen, o
   };
 
   const getThreadTitle = (thread: ContentMetadata) => {
-    // Show platforms that were generated together
-    const platforms = thread.generatedContent.map(content => getPlatformDisplay(content.platform));
-    if (platforms.length > 0) {
-      if (platforms.length === 1) {
-        const firstContent = thread.generatedContent[0];
-        if (firstContent?.title) {
-          return firstContent.title;
+    // Priority 1: Use sourceText if available (for text input or transcribed text)
+    if (thread.sourceText) {
+      // Clean up JSON strings and extract meaningful text
+      let text = thread.sourceText;
+      
+      // If it looks like JSON, try to parse and extract meaningful content
+      if (text.startsWith('{') || text.startsWith('[')) {
+        try {
+          const parsed = JSON.parse(text);
+          // Extract text from parsed JSON if it has content, title, or text fields
+          text = parsed.content || parsed.title || parsed.text || text;
+        } catch {
+          // Not valid JSON or parsing failed, use as is
         }
-        if (firstContent?.content) {
-          return firstContent.content.slice(0, 30) + (firstContent.content.length > 30 ? '...' : '');
+      }
+      
+      // Remove excessive whitespace and trim
+      text = text.replace(/\s+/g, ' ').trim();
+      
+      // Return first 40 characters
+      if (text.length > 40) {
+        return text.slice(0, 40) + '...';
+      }
+      return text;
+    }
+    
+    // Priority 2: For audio/video, use original file name
+    if (thread.originalFileName) {
+      // Remove file extension and clean up
+      const nameWithoutExt = thread.originalFileName.replace(/\.[^/.]+$/, '');
+      if (nameWithoutExt.length > 30) {
+        return nameWithoutExt.slice(0, 30) + '...';
+      }
+      return nameWithoutExt;
+    }
+    
+    // Priority 3: Try to extract from generated content
+    if (thread.generatedContent && thread.generatedContent.length > 0) {
+      // Look for the first non-empty content
+      for (const content of thread.generatedContent) {
+        // Try to get title first
+        if (content.title && typeof content.title === 'string' && content.title.trim()) {
+          const title = content.title.trim();
+          return title.length > 40 ? title.slice(0, 40) + '...' : title;
         }
-        return `${platforms[0]}コンテンツ`;
-      } else {
-        return platforms.join(' + ') + ' 生成';
+        
+        // Then try content field
+        if (content.content) {
+          let text = '';
+          
+          // Handle different content formats
+          if (typeof content.content === 'string') {
+            text = content.content;
+          } else if (typeof content.content === 'object') {
+            // If content is an object, try to extract text
+            const obj = content.content as any;
+            text = obj.content || obj.text || obj.primaryText || '';
+          }
+          
+          if (text) {
+            // Clean up and extract meaningful text
+            text = text.replace(/\s+/g, ' ').trim();
+            
+            // Skip if it's just a platform name or very short
+            if (text.length > 5) {
+              return text.length > 40 ? text.slice(0, 40) + '...' : text;
+            }
+          }
+        }
       }
     }
+    
+    // Fallback: Use source type
     return `${getSourceTypeDisplay(thread.sourceType)}コンテンツ`;
   };
 
