@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import { PlatformContent } from '@one-to-multi-agent/core';
 import { getApiUrl } from '../lib/config';
+import { useHistory } from '../contexts/HistoryContext';
 
 // Type definitions for API responses and states
 export interface Job {
@@ -45,6 +46,7 @@ export const useContentGenerator = () => {
   const [results, setResults] = useState<JobResults | null>(null);
   const [editableContent, setEditableContent] = useState<Record<string, Partial<PlatformContent>>>({});
   const [error, setError] = useState<string | null>(null);
+  const { refreshHistory } = useHistory();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -153,6 +155,11 @@ export const useContentGenerator = () => {
             }
           });
           setEditableContent(initialEditableContent);
+          
+          // Refresh history after successful content generation
+          setTimeout(() => {
+            refreshHistory();
+          }, 1000); // Small delay to ensure database is updated
         } else {
           const platformResults: PlatformResult[] = jobs.map(job => ({ 
             platform: job.platform, 
@@ -196,6 +203,13 @@ export const useContentGenerator = () => {
         }
       });
       setEditableContent(initialEditableContent);
+      
+      // Refresh history after successful content generation  
+      if (platformResults.some(r => r.success)) {
+        setTimeout(() => {
+          refreshHistory();
+        }, 1000); // Small delay to ensure database is updated
+      }
     }
     
     setIsProcessing(false);

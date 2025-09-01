@@ -1,7 +1,7 @@
 "use client";
 
-import React, { useState, useEffect } from 'react';
-import { getApiUrl } from '../lib/config';
+import React, { useEffect } from 'react';
+import { useHistory } from '../contexts/HistoryContext';
 
 interface ContentMetadata {
   id: string;
@@ -31,38 +31,11 @@ interface SidebarProps {
 }
 
 export function Sidebar({ selectedThreadId, onThreadSelect, onNewChat, isOpen, onClose }: SidebarProps) {
-  const [threads, setThreads] = useState<ContentMetadata[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const { history: threads, isLoading: loading, error, fetchHistory, refreshHistory } = useHistory();
 
   useEffect(() => {
-    fetchThreads();
+    fetchHistory();
   }, []);
-
-  const fetchThreads = async () => {
-    setLoading(true);
-    setError(null);
-    
-    try {
-      const response = await fetch(`${getApiUrl()}/history`, {
-        method: 'GET',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-      });
-
-      if (!response.ok) {
-        throw new Error('Failed to fetch threads');
-      }
-
-      const data = await response.json();
-      setThreads(data.data || []);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to fetch threads');
-    } finally {
-      setLoading(false);
-    }
-  };
 
   const formatDate = (dateString: string) => {
     const date = new Date(dateString);
@@ -185,7 +158,7 @@ export function Sidebar({ selectedThreadId, onThreadSelect, onNewChat, isOpen, o
           <div className="p-4">
             <p className="text-red-400 text-sm">エラー: {error}</p>
             <button
-              onClick={fetchThreads}
+              onClick={refreshHistory}
               className="mt-2 text-blue-400 hover:text-blue-300 text-sm underline"
             >
               再試行

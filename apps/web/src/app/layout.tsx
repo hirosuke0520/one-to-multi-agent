@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import Script from "next/script";
+import { HistoryProvider } from "../contexts/HistoryContext";
 import "./globals.css";
 
 const geistSans = Geist({
@@ -29,7 +30,9 @@ export default function RootLayout({
         className={`${geistSans.variable} ${geistMono.variable} antialiased`}
       >
         <Script src="/runtime-config.js" strategy="beforeInteractive" />
-        {children}
+        <HistoryProvider>
+          {children}
+        </HistoryProvider>
       </body>
     </html>
   );
