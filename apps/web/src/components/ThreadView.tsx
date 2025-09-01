@@ -240,17 +240,27 @@ export function ThreadView({ threadId }: ThreadViewProps) {
         </div>
 
         {/* Preview Data */}
-        {thread.previewData && (
+        {(thread.sourceType === 'video' || thread.sourceType === 'audio' || thread.previewData) && (
           <div className="mb-6 p-4 bg-gray-50 rounded-lg">
             <h3 className="font-medium text-gray-800 mb-3">プレビュー</h3>
             
-            {thread.sourceType === 'video' && 'thumbnailUrl' in thread.previewData && (
+            {thread.sourceType === 'video' && (
               <div className="mb-3">
-                <img
-                  src={thread.previewData.thumbnailUrl}
-                  alt="Video thumbnail"
-                  className="w-48 h-36 object-cover rounded"
-                />
+                <video 
+                  controls 
+                  className="w-full max-w-2xl rounded-lg shadow-sm"
+                  style={{ maxHeight: '500px', objectFit: 'contain' }}
+                  preload="metadata"
+                  poster={thread.previewData && 'thumbnailUrl' in thread.previewData && thread.previewData.thumbnailUrl ? thread.previewData.thumbnailUrl : undefined}
+                >
+                  <source src={`${getApiUrl()}/video/${thread.id}`} type="video/mp4" />
+                  お使いのブラウザは動画再生に対応していません。
+                </video>
+                {thread.previewData && 'width' in thread.previewData && 'height' in thread.previewData && (
+                  <div className="mt-2 text-xs text-gray-500">
+                    解像度: {thread.previewData.width} × {thread.previewData.height}
+                  </div>
+                )}
               </div>
             )}
             
@@ -264,6 +274,18 @@ export function ThreadView({ threadId }: ThreadViewProps) {
                 >
                   お使いのブラウザは音声再生に対応していません。
                 </audio>
+                {thread.previewData && 'duration' in thread.previewData && (
+                  <div className="mt-2 text-xs text-gray-500">
+                    長さ: {formatDuration(thread.previewData.duration)}
+                  </div>
+                )}
+              </div>
+            )}
+            
+            {/* Preview Data that's not audio/video (e.g., waveform visualization for old records) */}
+            {thread.previewData && thread.sourceType !== 'audio' && thread.sourceType !== 'video' && (
+              <div className="text-sm text-gray-600">
+                Preview data available
               </div>
             )}
           </div>

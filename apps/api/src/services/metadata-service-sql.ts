@@ -235,11 +235,11 @@ export class MetadataServiceSQL {
             sourceType: row.source_type,
             sourceText: row.source_text,
             originalFileName: row.original_file_name,
+            originalFilePath: row.original_file_path,
             size: row.file_size,
             mimeType: row.mime_type,
             duration: row.duration,
             userId: row.user_id,
-            gcsFilePath: row.gcs_file_path,
             createdAt: row.created_at.toISOString(),
             previewData: undefined,
             generatedContent: []

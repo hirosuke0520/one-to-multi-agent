@@ -6,6 +6,7 @@ import { jobs } from "./routes/jobs.js";
 import { publish } from "./routes/publish.js";
 import { history } from "./routes/history.js";
 import { audio } from "./routes/audio.js";
+import { video } from "./routes/video.js";
 import { databaseService } from "./services/database-service.js";
 
 const app = new Hono();
@@ -39,6 +40,7 @@ app.route("/jobs", jobs);
 app.route("/publish", publish);
 app.route("/history", history);
 app.route("/audio", audio);
+app.route("/video", video);
 
 const port = parseInt(process.env.PORT || "8787");
 
