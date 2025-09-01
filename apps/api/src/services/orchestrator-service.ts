@@ -359,6 +359,9 @@ export class OrchestratorService {
               }
               
               // Extract transcription text and save as sourceText
+              // TODO: Enable when Google Speech-to-Text is implemented
+              // Currently disabled because it returns mock data
+              /*
               try {
                 const transcriptedText = await this.transcriberService.transcribe(tempFilePath, request.sourceType);
                 metadata.sourceText = transcriptedText;
@@ -366,6 +369,7 @@ export class OrchestratorService {
                 console.warn('Failed to transcribe audio/video:', transcribeError);
                 // Continue without transcription
               }
+              */
               
               // Clean up temp file
               await this.previewService.cleanup([tempFilePath]);
