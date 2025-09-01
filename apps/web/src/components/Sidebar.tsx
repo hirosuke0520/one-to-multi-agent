@@ -53,8 +53,8 @@ export function Sidebar({ selectedThreadId, onThreadSelect, onNewChat, isOpen, o
   };
 
   const getThreadTitle = (thread: ContentMetadata) => {
-    // Priority 1: Use sourceText if available (for text input or transcribed text)
-    if (thread.sourceText) {
+    // Priority 1: For text input, use sourceText
+    if (thread.sourceType === 'text' && thread.sourceText) {
       // Clean up JSON strings and extract meaningful text
       let text = thread.sourceText;
       
@@ -79,50 +79,62 @@ export function Sidebar({ selectedThreadId, onThreadSelect, onNewChat, isOpen, o
       return text;
     }
     
-    // Priority 2: For audio/video, use original file name
-    if (thread.originalFileName) {
+    // Priority 2: For audio/video, try to extract from the first generated content
+    if ((thread.sourceType === 'audio' || thread.sourceType === 'video') && 
+        thread.generatedContent && thread.generatedContent.length > 0) {
+      
+      // Get the first platform's content
+      const firstContent = thread.generatedContent[0];
+      
+      // Try to extract meaningful text from content
+      if (firstContent.content) {
+        let text = '';
+        
+        // Handle different content formats
+        if (typeof firstContent.content === 'string') {
+          text = firstContent.content;
+          
+          // Try to parse if it's JSON string
+          if (text.startsWith('{') || text.startsWith('[')) {
+            try {
+              const parsed = JSON.parse(text);
+              text = parsed.content || parsed.primaryText || parsed.text || text;
+            } catch {
+              // Use as is if not valid JSON
+            }
+          }
+        } else if (typeof firstContent.content === 'object') {
+          // If content is an object, try to extract text
+          const obj = firstContent.content as any;
+          text = obj.content || obj.primaryText || obj.text || '';
+        }
+        
+        if (text) {
+          // Clean up and extract meaningful text
+          text = text.replace(/\s+/g, ' ').trim();
+          
+          // Return first 40 characters
+          if (text.length > 5) {
+            return text.length > 40 ? text.slice(0, 40) + '...' : text;
+          }
+        }
+      }
+      
+      // If no content found, try title
+      if (firstContent.title && typeof firstContent.title === 'string' && firstContent.title.trim()) {
+        const title = firstContent.title.trim();
+        return title.length > 40 ? title.slice(0, 40) + '...' : title;
+      }
+    }
+    
+    // Priority 3: For audio/video without content, use original file name
+    if ((thread.sourceType === 'audio' || thread.sourceType === 'video') && thread.originalFileName) {
       // Remove file extension and clean up
       const nameWithoutExt = thread.originalFileName.replace(/\.[^/.]+$/, '');
       if (nameWithoutExt.length > 30) {
         return nameWithoutExt.slice(0, 30) + '...';
       }
       return nameWithoutExt;
-    }
-    
-    // Priority 3: Try to extract from generated content
-    if (thread.generatedContent && thread.generatedContent.length > 0) {
-      // Look for the first non-empty content
-      for (const content of thread.generatedContent) {
-        // Try to get title first
-        if (content.title && typeof content.title === 'string' && content.title.trim()) {
-          const title = content.title.trim();
-          return title.length > 40 ? title.slice(0, 40) + '...' : title;
-        }
-        
-        // Then try content field
-        if (content.content) {
-          let text = '';
-          
-          // Handle different content formats
-          if (typeof content.content === 'string') {
-            text = content.content;
-          } else if (typeof content.content === 'object') {
-            // If content is an object, try to extract text
-            const obj = content.content as any;
-            text = obj.content || obj.text || obj.primaryText || '';
-          }
-          
-          if (text) {
-            // Clean up and extract meaningful text
-            text = text.replace(/\s+/g, ' ').trim();
-            
-            // Skip if it's just a platform name or very short
-            if (text.length > 5) {
-              return text.length > 40 ? text.slice(0, 40) + '...' : text;
-            }
-          }
-        }
-      }
     }
     
     // Fallback: Use source type

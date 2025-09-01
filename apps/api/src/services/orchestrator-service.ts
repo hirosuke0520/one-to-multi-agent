@@ -358,18 +358,8 @@ export class OrchestratorService {
                 console.log('Video preview generated:', metadata.previewData);
               }
               
-              // Extract transcription text and save as sourceText
-              // TODO: Enable when Google Speech-to-Text is implemented
-              // Currently disabled because it returns mock data
-              /*
-              try {
-                const transcriptedText = await this.transcriberService.transcribe(tempFilePath, request.sourceType);
-                metadata.sourceText = transcriptedText;
-              } catch (transcribeError) {
-                console.warn('Failed to transcribe audio/video:', transcribeError);
-                // Continue without transcription
-              }
-              */
+              // Note: Transcription is handled by Gemini during content generation
+              // We don't store transcribed text separately to avoid duplication
               
               // Clean up temp file
               await this.previewService.cleanup([tempFilePath]);
