@@ -6,6 +6,7 @@ import { PublisherService } from "./publisher-service.js";
 import { FileStorageService, StoredFile } from "./file-storage-service.js";
 import { MetadataServiceSQL, ContentMetadata, PlatformContent } from "./metadata-service-sql.js";
 import { PreviewService } from "./preview-service.js";
+import { VideoConverterService } from "./video-converter-service.js";
 import { ContentSource } from "@one-to-multi-agent/core";
 
 export interface ProcessJobRequest {
@@ -57,6 +58,7 @@ export class OrchestratorService {
   private fileStorageService: FileStorageService;
   private metadataService: MetadataServiceSQL;
   private previewService: PreviewService;
+  private videoConverterService: VideoConverterService;
 
   constructor() {
     this.jobService = new JobService();
@@ -66,21 +68,38 @@ export class OrchestratorService {
     this.fileStorageService = new FileStorageService();
     this.metadataService = new MetadataServiceSQL();
     this.previewService = new PreviewService();
+    this.videoConverterService = new VideoConverterService();
   }
 
   async createJob(request: ProcessJobRequest): Promise<string> {
     const jobId = uuidv4();
     
     let storedFile: StoredFile | undefined;
+    let processedBuffer = request.fileBuffer;
+    
+    // Convert video to H.264 if needed
+    if (request.fileBuffer && request.mimeType?.startsWith('video/')) {
+      console.log('Processing video for H.264 conversion...');
+      const conversionResult = await this.videoConverterService.processVideo(
+        request.fileBuffer,
+        request.fileName || 'video.mp4',
+        request.mimeType
+      );
+      
+      if (conversionResult.converted) {
+        console.log('Video converted to H.264 successfully');
+        processedBuffer = conversionResult.buffer;
+      }
+    }
     
     // Store original file to storage service if it's an audio/video file
-    if (request.fileBuffer && request.fileName && request.mimeType) {
+    if (processedBuffer && request.fileName && request.mimeType) {
       storedFile = await this.fileStorageService.saveFile(
-        request.fileBuffer,
+        processedBuffer,
         request.fileName,
         request.mimeType
       );
-      console.log(`Original file stored: ${storedFile.filePath}`);
+      console.log(`File stored: ${storedFile.filePath}`);
     }
     
     const job: Job = {
@@ -108,15 +127,31 @@ export class OrchestratorService {
 
   async createJobs(request: ProcessJobRequest): Promise<{ jobs: Array<{ jobId: string; platform: string }> }> {
     let storedFile: StoredFile | undefined;
+    let processedBuffer = request.fileBuffer;
+    
+    // Convert video to H.264 if needed
+    if (request.fileBuffer && request.mimeType?.startsWith('video/')) {
+      console.log('Processing video for H.264 conversion...');
+      const conversionResult = await this.videoConverterService.processVideo(
+        request.fileBuffer,
+        request.fileName || 'video.mp4',
+        request.mimeType
+      );
+      
+      if (conversionResult.converted) {
+        console.log('Video converted to H.264 successfully');
+        processedBuffer = conversionResult.buffer;
+      }
+    }
     
     // Store original file once if needed
-    if (request.fileBuffer && request.fileName && request.mimeType) {
+    if (processedBuffer && request.fileName && request.mimeType) {
       storedFile = await this.fileStorageService.saveFile(
-        request.fileBuffer,
+        processedBuffer,
         request.fileName,
         request.mimeType
       );
-      console.log(`Original file stored: ${storedFile.filePath}`);
+      console.log(`File stored: ${storedFile.filePath}`);
     }
     
     // Create single job for all target platforms
@@ -276,7 +311,7 @@ export class OrchestratorService {
   private async saveContentMetadata(
     jobId: string,
     request: ProcessJobRequest,
-    platformResults: Array<{ platform: string; success: boolean; content: any }>,
+    platformResults: Array<{ platform: string; success: boolean; content?: any; error?: string }>,
     sourceContent: ContentSource
   ): Promise<void> {
     try {
@@ -343,18 +378,20 @@ export class OrchestratorService {
       }
 
       // Transform platform results to metadata format
-      metadata.generatedContent = platformResults.map((result): PlatformContent => {
-        const content = result.content;
-        return {
-          platform: result.platform,
-          title: content.title,
-          description: content.description,
-          content: content.content || content.primaryText,
-          hashtags: content.hashtags || content.tags,
-          script: content.script,
-          chapters: content.chapters,
-        };
-      });
+      metadata.generatedContent = platformResults
+        .filter(result => result.success && result.content)
+        .map((result): PlatformContent => {
+          const content = result.content;
+          return {
+            platform: result.platform,
+            title: content.title,
+            description: content.description,
+            content: content.content || content.primaryText,
+            hashtags: content.hashtags || content.tags,
+            script: content.script,
+            chapters: content.chapters,
+          };
+        });
 
       // Save metadata to database
       await this.metadataService.saveMetadata(metadata);
@@ -369,10 +406,9 @@ export class OrchestratorService {
   private async cleanupFiles(request: ProcessJobRequest): Promise<void> {
     try {
       if (request.storedFile) {
-        // Delete the uploaded file from GCS
-        const deleted = await this.storageService.deleteFile(
-          request.storedFile.fileId,
-          request.storedFile.gcsPath
+        // Delete the uploaded file from storage
+        const deleted = await this.fileStorageService.deleteFile(
+          request.storedFile.filePath
         );
         
         if (deleted) {
