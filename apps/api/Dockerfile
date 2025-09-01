@@ -19,8 +19,8 @@ COPY . .
 # Build the application
 RUN npm run build
 
-# Create data directory for file storage (fallback when GCS is not available)
-RUN mkdir -p /app/data
+# Create necessary directories
+RUN mkdir -p /app/data /app/temp
 
 # Set environment variables
 ENV NODE_ENV=production

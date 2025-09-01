@@ -13,6 +13,8 @@ export interface StoredFile {
 /**
  * Simple file storage service for local development
  * Files are stored in Docker volume for persistence
+ * 
+ * Note: In production, use FileStorageServiceGCS for Google Cloud Storage
  */
 export class FileStorageService {
   private storageDir: string;
