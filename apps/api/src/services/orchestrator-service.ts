@@ -3,7 +3,7 @@ import { JobService } from "./job-service.js";
 import { TranscriberService } from "./transcriber-service.js";
 import { ContentService } from "./content-service.js";
 import { PublisherService } from "./publisher-service.js";
-import { StorageService, StoredFile } from "./storage-service.js";
+import { FileStorageService, StoredFile } from "./file-storage-service.js";
 import { MetadataServiceSQL, ContentMetadata, PlatformContent } from "./metadata-service-sql.js";
 import { PreviewService } from "./preview-service.js";
 import { ContentSource } from "@one-to-multi-agent/core";
@@ -54,7 +54,7 @@ export class OrchestratorService {
   private transcriberService: TranscriberService;
   private contentService: ContentService;
   private publisherService: PublisherService;
-  private storageService: StorageService;
+  private fileStorageService: FileStorageService;
   private metadataService: MetadataServiceSQL;
   private previewService: PreviewService;
 
@@ -63,7 +63,7 @@ export class OrchestratorService {
     this.transcriberService = new TranscriberService();
     this.contentService = new ContentService();
     this.publisherService = new PublisherService();
-    this.storageService = new StorageService();
+    this.fileStorageService = new FileStorageService();
     this.metadataService = new MetadataServiceSQL();
     this.previewService = new PreviewService();
   }
@@ -73,13 +73,14 @@ export class OrchestratorService {
     
     let storedFile: StoredFile | undefined;
     
-    // Store file to storage service if it's an audio/video file
+    // Store original file to storage service if it's an audio/video file
     if (request.fileBuffer && request.fileName && request.mimeType) {
-      storedFile = await this.storageService.uploadFile(
+      storedFile = await this.fileStorageService.saveFile(
         request.fileBuffer,
         request.fileName,
         request.mimeType
       );
+      console.log(`Original file stored: ${storedFile.filePath}`);
     }
     
     const job: Job = {
@@ -108,13 +109,14 @@ export class OrchestratorService {
   async createJobs(request: ProcessJobRequest): Promise<{ jobs: Array<{ jobId: string; platform: string }> }> {
     let storedFile: StoredFile | undefined;
     
-    // Upload file once if needed
+    // Store original file once if needed
     if (request.fileBuffer && request.fileName && request.mimeType) {
-      storedFile = await this.storageService.uploadFile(
+      storedFile = await this.fileStorageService.saveFile(
         request.fileBuffer,
         request.fileName,
         request.mimeType
       );
+      console.log(`Original file stored: ${storedFile.filePath}`);
     }
     
     // Create single job for all target platforms
@@ -165,18 +167,17 @@ export class OrchestratorService {
       if (request.sourceType === "text") {
         sourceContent = request.content || "";
       } else {
-        // For audio/video, download from storage service
+        // For audio/video, retrieve from storage service
         if (!request.storedFile) {
           throw new Error("Stored file reference is required for audio/video content");
         }
         
-        const downloadedBuffer = await this.storageService.downloadFile(
-          request.storedFile.fileId,
-          request.storedFile.gcsPath
+        const downloadedBuffer = await this.fileStorageService.getFile(
+          request.storedFile.filePath
         );
         
         if (!downloadedBuffer) {
-          throw new Error("Failed to download file from storage");
+          throw new Error("Failed to retrieve file from storage");
         }
         
         fileBuffer = downloadedBuffer;
@@ -246,8 +247,8 @@ export class OrchestratorService {
 
       await this.updateJobStatus(jobId, "completed");
       
-      // Step 5: Clean up uploaded files after successful completion
-      await this.cleanupFiles(request);
+      // Note: Keep audio files for playback functionality
+      // await this.cleanupFiles(request);
       
     } catch (error) {
       console.error(`Job ${jobId} failed:`, error);
@@ -286,29 +287,49 @@ export class OrchestratorService {
         generatedContent: [],
       };
 
-      // Add file-specific metadata
+      // Save source content based on type
+      if (request.sourceType === 'text' && request.content) {
+        // For text input, save the content directly
+        metadata.sourceText = request.content;
+      }
+
+      // Add file-specific metadata for original file
       if (request.storedFile) {
         metadata.originalFileName = request.storedFile.fileName;
+        metadata.originalFilePath = request.storedFile.filePath;
         metadata.mimeType = request.storedFile.mimeType;
         metadata.size = request.storedFile.size;
 
-        // Generate preview for audio/video files
+        // Generate preview and extract text for audio/video files
         if (request.sourceType === 'audio' || request.sourceType === 'video') {
           try {
-            // Download the file temporarily for preview generation
-            const fileBuffer = await this.storageService.downloadFile(
-              request.storedFile.fileId,
-              request.storedFile.gcsPath
+            // Retrieve the file temporarily for preview generation and transcription
+            const fileBuffer = await this.fileStorageService.getFile(
+              request.storedFile.filePath
             );
             
             if (fileBuffer) {
+              const fs = await import('fs');
               const tempFilePath = `/tmp/preview_${Date.now()}_${request.storedFile.fileName}`;
-              require('fs').writeFileSync(tempFilePath, fileBuffer);
+              fs.writeFileSync(tempFilePath, fileBuffer);
               
+              // Generate preview data
+              console.log(`Generating ${request.sourceType} preview for: ${tempFilePath}`);
               if (request.sourceType === 'audio') {
                 metadata.previewData = await this.previewService.generateAudioPreview(tempFilePath);
+                console.log('Audio preview generated:', metadata.previewData);
               } else {
                 metadata.previewData = await this.previewService.generateVideoPreview(tempFilePath);
+                console.log('Video preview generated:', metadata.previewData);
+              }
+              
+              // Extract transcription text and save as sourceText
+              try {
+                const transcriptedText = await this.transcriberService.transcribe(tempFilePath, request.sourceType);
+                metadata.sourceText = transcriptedText;
+              } catch (transcribeError) {
+                console.warn('Failed to transcribe audio/video:', transcribeError);
+                // Continue without transcription
               }
               
               // Clean up temp file

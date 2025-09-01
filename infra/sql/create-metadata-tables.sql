@@ -4,6 +4,7 @@
 CREATE TABLE IF NOT EXISTS content_metadata (
     id VARCHAR(255) PRIMARY KEY,
     source_type VARCHAR(20) NOT NULL CHECK (source_type IN ('text', 'audio', 'video')),
+    source_text TEXT, -- For text input content
     original_file_name VARCHAR(255),
     file_size BIGINT,
     mime_type VARCHAR(100),

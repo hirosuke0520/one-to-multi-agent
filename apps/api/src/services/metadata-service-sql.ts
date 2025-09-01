@@ -3,7 +3,9 @@ import { databaseService } from './database-service.js';
 export interface ContentMetadata {
   id: string;
   sourceType: 'text' | 'audio' | 'video';
+  sourceText?: string; // For text input content or transcription
   originalFileName?: string;
+  originalFilePath?: string; // Path to original uploaded file
   size?: number;
   mimeType?: string;
   duration?: number;
@@ -46,21 +48,25 @@ export class MetadataServiceSQL {
         // Insert main content metadata
         await client.query(`
           INSERT INTO content_metadata (
-            id, source_type, original_file_name, file_size, mime_type, 
-            duration, user_id, created_at
-          ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+            id, source_type, source_text, original_file_name, original_file_path,
+            file_size, mime_type, duration, user_id, created_at
+          ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
           ON CONFLICT (id) DO UPDATE SET
             source_type = $2,
-            original_file_name = $3,
-            file_size = $4,
-            mime_type = $5,
-            duration = $6,
-            user_id = $7,
+            source_text = $3,
+            original_file_name = $4,
+            original_file_path = $5,
+            file_size = $6,
+            mime_type = $7,
+            duration = $8,
+            user_id = $9,
             updated_at = CURRENT_TIMESTAMP
         `, [
           metadata.id,
           metadata.sourceType,
+          metadata.sourceText,
           metadata.originalFileName,
+          metadata.originalFilePath,
           metadata.size,
           metadata.mimeType,
           metadata.duration,
@@ -148,7 +154,7 @@ export class MetadataServiceSQL {
         if (previewRow.preview_type === 'audio') {
           previewData = {
             duration: previewRow.duration || 0,
-            waveform: previewRow.waveform_data ? JSON.parse(previewRow.waveform_data) : [],
+            waveform: previewRow.waveform_data || [],
             transcript: previewRow.transcript_preview
           };
         } else {
@@ -172,15 +178,17 @@ export class MetadataServiceSQL {
         title: contentRow.title,
         description: contentRow.description,
         content: contentRow.content,
-        hashtags: contentRow.hashtags ? JSON.parse(contentRow.hashtags) : undefined,
+        hashtags: contentRow.hashtags,
         script: contentRow.script,
-        chapters: contentRow.chapters ? JSON.parse(contentRow.chapters) : undefined
+        chapters: contentRow.chapters
       }));
 
       return {
         id: row.id,
         sourceType: row.source_type,
+        sourceText: row.source_text,
         originalFileName: row.original_file_name,
+        originalFilePath: row.original_file_path,
         size: row.file_size,
         mimeType: row.mime_type,
         duration: row.duration,
@@ -225,11 +233,13 @@ export class MetadataServiceSQL {
           contentMap.set(row.id, {
             id: row.id,
             sourceType: row.source_type,
+            sourceText: row.source_text,
             originalFileName: row.original_file_name,
             size: row.file_size,
             mimeType: row.mime_type,
             duration: row.duration,
             userId: row.user_id,
+            gcsFilePath: row.gcs_file_path,
             createdAt: row.created_at.toISOString(),
             previewData: undefined,
             generatedContent: []
@@ -243,7 +253,7 @@ export class MetadataServiceSQL {
           if (row.preview_type === 'audio') {
             content.previewData = {
               duration: row.preview_duration || 0,
-              waveform: row.waveform_data ? JSON.parse(row.waveform_data) : [],
+              waveform: row.waveform_data || [],
               transcript: row.transcript_preview
             };
           } else {
@@ -271,9 +281,9 @@ export class MetadataServiceSQL {
           title: row.title,
           description: row.description,
           content: row.content,
-          hashtags: row.hashtags ? JSON.parse(row.hashtags) : undefined,
+          hashtags: row.hashtags,
           script: row.script,
-          chapters: row.chapters ? JSON.parse(row.chapters) : undefined
+          chapters: row.chapters
         }));
       }
 

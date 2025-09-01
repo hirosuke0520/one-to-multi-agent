@@ -33,6 +33,7 @@ interface PlatformContent {
 interface ContentMetadata {
   id: string;
   sourceType: 'text' | 'audio' | 'video';
+  sourceText?: string; // User input text or transcribed text
   originalFileName?: string;
   duration?: number;
   size?: number;
@@ -253,25 +254,32 @@ export function ThreadView({ threadId }: ThreadViewProps) {
               </div>
             )}
             
-            {thread.sourceType === 'audio' && 'waveform' in thread.previewData && (
+            {thread.sourceType === 'audio' && (
               <div className="mb-3">
-                <div className="flex items-end h-16 space-x-1 bg-white p-3 rounded border">
-                  {thread.previewData.waveform.slice(0, 100).map((point, index) => (
-                    <div
-                      key={index}
-                      className="bg-blue-500 flex-1 rounded-sm"
-                      style={{ height: `${Math.max(2, point * 50)}px` }}
-                    />
-                  ))}
-                </div>
+                <audio 
+                  controls 
+                  className="w-full max-w-md"
+                  src={`${getApiUrl()}/audio/${thread.id}`}
+                  preload="metadata"
+                >
+                  お使いのブラウザは音声再生に対応していません。
+                </audio>
               </div>
             )}
-            
-            {thread.previewData.transcript && (
-              <div className="text-sm text-gray-700 italic">
-                <strong>転写:</strong> "{thread.previewData.transcript}..."
-              </div>
-            )}
+          </div>
+        )}
+
+        {/* Source Content Display - Only for text input */}
+        {thread.sourceType === 'text' && thread.sourceText && (
+          <div className="mb-6 md:mb-8">
+            <h3 className="text-lg md:text-xl font-semibold text-gray-800 mb-3">
+              入力テキスト
+            </h3>
+            <div className="bg-gray-50 border border-gray-200 rounded-lg p-4">
+              <p className="text-gray-800 whitespace-pre-wrap text-sm md:text-base leading-relaxed">
+                {thread.sourceText}
+              </p>
+            </div>
           </div>
         )}
 
