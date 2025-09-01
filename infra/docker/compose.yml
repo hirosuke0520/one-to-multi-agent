@@ -10,6 +10,7 @@ services:
       - ../../.env
     environment:
       - NODE_ENV=development
+      - NEXT_PUBLIC_API_URL=http://localhost:8787
     volumes:
       - ../../apps/web:/app
       - web_node_modules:/app/node_modules
@@ -23,7 +24,7 @@ services:
   api:
     build:
       context: ../../apps/api
-      dockerfile: Dockerfile
+      dockerfile: Dockerfile.dev
     ports:
       - "8787:8787"
     env_file:
@@ -34,6 +35,11 @@ services:
       - DATA_DIR=/app/data
       - TEMP_DIR=/app/temp
       - GCP_PROJECT_ID=one-to-multi-agent-80339
+      - DB_HOST=postgres
+      - DB_USER=postgres
+      - DB_PASSWORD=password
+      - DB_NAME=one_to_multi_agent
+      - DB_PORT=5432
     volumes:
       - ../../apps/api:/app
       - api_node_modules:/app/node_modules
@@ -41,10 +47,13 @@ services:
       - api_temp:/app/temp
       - ../../gcp-service-account-key.json:/app/gcp-service-account-key.json:ro
     command: npm run dev
+    depends_on:
+      postgres:
+        condition: service_healthy
     networks:
       - app-network
 
-  # Database (SQLite for development, PostgreSQL for production)
+  # Database (PostgreSQL for both development and production)
   postgres:
     image: postgres:15-alpine
     environment:
@@ -55,9 +64,15 @@ services:
       - "5432:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
-      - ./init-db.sql:/docker-entrypoint-initdb.d/init-db.sql
-    profiles:
-      - production
+      - ../sql/create-metadata-tables.sql:/docker-entrypoint-initdb.d/01-create-metadata-tables.sql
+      - ./init-db.sql:/docker-entrypoint-initdb.d/02-init-db.sql
+    networks:
+      - app-network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
 
   # Redis for job queuing and caching
   redis:
