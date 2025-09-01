@@ -8,11 +8,17 @@ declare global {
 }
 
 export const getApiUrl = (): string => {
-  // Check if we're in the browser and window.__ENV__ is available
-  if (typeof window !== 'undefined' && window.__ENV__) {
-    return window.__ENV__.NEXT_PUBLIC_API_URL || 'http://localhost:8787';
+  // Always use environment variable first
+  const envApiUrl = process.env.NEXT_PUBLIC_API_URL;
+  if (envApiUrl) {
+    return envApiUrl;
   }
   
-  // Fallback to process.env
-  return process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8787';
+  // Check if we're in the browser and window.__ENV__ is available (production)
+  if (typeof window !== 'undefined' && window.__ENV__?.NEXT_PUBLIC_API_URL) {
+    return window.__ENV__.NEXT_PUBLIC_API_URL;
+  }
+  
+  // Default fallback
+  return 'http://localhost:8787';
 };

@@ -32,7 +32,7 @@ export const EditableContent = ({ platform, content, updateEditableContent }: Ed
         <textarea 
           value={threadsContent.text || ''} 
           onChange={(e) => handleChange('text', e.target.value)} 
-          className="w-full p-2 border rounded"
+          className="w-full p-2 border rounded h-24"
         />
       );
     case 'twitter':
@@ -41,7 +41,7 @@ export const EditableContent = ({ platform, content, updateEditableContent }: Ed
         <textarea 
           value={twitterContent.text || ''} 
           onChange={(e) => handleChange('text', e.target.value)} 
-          className="w-full p-2 border rounded" 
+          className="w-full p-2 border rounded h-24" 
           maxLength={140} 
         />
       );
@@ -50,7 +50,7 @@ export const EditableContent = ({ platform, content, updateEditableContent }: Ed
         return (
             <div className="space-y-2">
                 <input type="text" value={youtubeContent.title || ''} onChange={(e) => handleChange('title', e.target.value)} className="w-full p-2 border rounded" placeholder="Title" />
-                <textarea value={youtubeContent.description || ''} onChange={(e) => handleChange('description', e.target.value)} className="w-full p-2 border rounded" placeholder="Description" />
+                <textarea value={youtubeContent.description || ''} onChange={(e) => handleChange('description', e.target.value)} className="w-full p-2 border rounded h-24" placeholder="Description" />
             </div>
         );
     case 'wordpress':
@@ -58,7 +58,7 @@ export const EditableContent = ({ platform, content, updateEditableContent }: Ed
         return (
             <div className="space-y-2">
                 <input type="text" value={wordpressContent.title || ''} onChange={(e) => handleChange('title', e.target.value)} className="w-full p-2 border rounded" placeholder="Title" />
-                <textarea value={wordpressContent.content || ''} onChange={(e) => handleChange('content', e.target.value)} className="w-full p-2 border rounded h-40" placeholder="Content" />
+                <textarea value={wordpressContent.content || ''} onChange={(e) => handleChange('content', e.target.value)} className="w-full p-2 border rounded h-32" placeholder="Content" />
             </div>
         );
     case 'instagram':
@@ -67,7 +67,7 @@ export const EditableContent = ({ platform, content, updateEditableContent }: Ed
             <textarea 
               value={instagramContent.caption || ''} 
               onChange={(e) => handleChange('caption', e.target.value)} 
-              className="w-full p-2 border rounded"
+              className="w-full p-2 border rounded h-24"
             />
         );
     case 'tiktok':
@@ -76,10 +76,10 @@ export const EditableContent = ({ platform, content, updateEditableContent }: Ed
             <textarea 
               value={tiktokContent.caption || ''} 
               onChange={(e) => handleChange('caption', e.target.value)} 
-              className="w-full p-2 border rounded"
+              className="w-full p-2 border rounded h-24"
             />
         );
     default:
-      return <textarea value={JSON.stringify(content, null, 2)} readOnly className="w-full h-40 p-2 border rounded bg-gray-100" />;
+      return <textarea value={JSON.stringify(content, null, 2)} readOnly className="w-full h-32 p-2 border rounded bg-gray-100" />;
   }
 };

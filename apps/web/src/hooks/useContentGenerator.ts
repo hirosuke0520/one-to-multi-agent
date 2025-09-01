@@ -118,29 +118,86 @@ export const useContentGenerator = () => {
 
   const fetchFinalResults = async (jobs: Job[]) => {
     const apiUrl = getApiUrl();
-    const platformResults: PlatformResult[] = await Promise.all(
-      jobs.map(async (job) => {
-        try {
-          const res = await fetch(`${apiUrl}/jobs/${job.jobId}/results`);
-          if (!res.ok) return { platform: job.platform, success: false, error: 'Failed to fetch results' };
-          const data = await res.json();
-          return data.success ? data.results.platformResults[0] : { platform: job.platform, success: false, error: data.error };
-        } catch {
-          return { platform: job.platform, success: false, error: 'Failed to fetch results' };
+    
+    // Since all jobs now share the same jobId, fetch results only once
+    const uniqueJobIds = [...new Set(jobs.map(job => job.jobId))];
+    
+    if (uniqueJobIds.length === 1) {
+      // Single job with multiple platforms
+      try {
+        const res = await fetch(`${apiUrl}/jobs/${uniqueJobIds[0]}/results`);
+        if (!res.ok) {
+          const platformResults: PlatformResult[] = jobs.map(job => ({ 
+            platform: job.platform, 
+            success: false, 
+            error: 'Failed to fetch results' 
+          }));
+          const finalResults: JobResults = { sourceText: content || file?.name || '', platformResults };
+          setResults(finalResults);
+          setIsProcessing(false);
+          return;
         }
-      })
-    );
+        
+        const data = await res.json();
+        if (data.success && data.results && data.results.platformResults) {
+          const finalResults: JobResults = { 
+            sourceText: data.results.sourceText || content || file?.name || '', 
+            platformResults: data.results.platformResults 
+          };
+          setResults(finalResults);
 
-    const finalResults: JobResults = { sourceText: content || file?.name || '', platformResults };
-    setResults(finalResults);
-
-    const initialEditableContent: Record<string, Partial<PlatformContent>> = {};
-    platformResults.forEach((result) => {
-      if (result.success && result.content) {
-        initialEditableContent[result.platform] = { ...result.content.content };
+          const initialEditableContent: Record<string, Partial<PlatformContent>> = {};
+          data.results.platformResults.forEach((result: PlatformResult) => {
+            if (result.success && result.content) {
+              initialEditableContent[result.platform] = { ...result.content.content };
+            }
+          });
+          setEditableContent(initialEditableContent);
+        } else {
+          const platformResults: PlatformResult[] = jobs.map(job => ({ 
+            platform: job.platform, 
+            success: false, 
+            error: data.error || 'Unknown error' 
+          }));
+          const finalResults: JobResults = { sourceText: content || file?.name || '', platformResults };
+          setResults(finalResults);
+        }
+      } catch (error) {
+        const platformResults: PlatformResult[] = jobs.map(job => ({ 
+          platform: job.platform, 
+          success: false, 
+          error: 'Failed to fetch results' 
+        }));
+        const finalResults: JobResults = { sourceText: content || file?.name || '', platformResults };
+        setResults(finalResults);
       }
-    });
-    setEditableContent(initialEditableContent);
+    } else {
+      // Fallback: multiple separate jobs (old behavior)
+      const platformResults: PlatformResult[] = await Promise.all(
+        jobs.map(async (job) => {
+          try {
+            const res = await fetch(`${apiUrl}/jobs/${job.jobId}/results`);
+            if (!res.ok) return { platform: job.platform, success: false, error: 'Failed to fetch results' };
+            const data = await res.json();
+            return data.success ? data.results.platformResults[0] : { platform: job.platform, success: false, error: data.error };
+          } catch {
+            return { platform: job.platform, success: false, error: 'Failed to fetch results' };
+          }
+        })
+      );
+
+      const finalResults: JobResults = { sourceText: content || file?.name || '', platformResults };
+      setResults(finalResults);
+
+      const initialEditableContent: Record<string, Partial<PlatformContent>> = {};
+      platformResults.forEach((result) => {
+        if (result.success && result.content) {
+          initialEditableContent[result.platform] = { ...result.content.content };
+        }
+      });
+      setEditableContent(initialEditableContent);
+    }
+    
     setIsProcessing(false);
   };
 
@@ -153,6 +210,17 @@ export const useContentGenerator = () => {
       ...prev,
       [platform]: { ...prev[platform], [field]: value },
     }));
+  };
+
+  const resetForm = () => {
+    setSourceType('text');
+    setContent('');
+    setFile(null);
+    setTargets([]);
+    setIsProcessing(false);
+    setResults(null);
+    setEditableContent({});
+    setError(null);
   };
 
   return {
@@ -171,5 +239,6 @@ export const useContentGenerator = () => {
     handleSubmit,
     handlePublish,
     updateEditableContent,
+    resetForm,
   };
 };

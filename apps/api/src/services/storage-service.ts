@@ -8,6 +8,7 @@ export interface StoredFile {
   mimeType: string;
   bucketName: string;
   gcsPath: string;
+  size?: number;
   uploadedAt: Date;
 }
 
@@ -76,6 +77,7 @@ export class StorageService {
       mimeType,
       bucketName: this.bucketName,
       gcsPath,
+      size: fileBuffer.length,
       uploadedAt: new Date(),
     };
   }
@@ -111,7 +113,7 @@ export class StorageService {
   /**
    * Delete a file from GCS and memory
    */
-  async deleteFile(fileId: string, gcsPath: string): Promise<void> {
+  async deleteFile(fileId: string, gcsPath: string): Promise<boolean> {
     if (this.useGCS && this.storage) {
       try {
         const bucket = this.storage.bucket(this.bucketName);
@@ -120,12 +122,14 @@ export class StorageService {
         console.log(`File deleted from GCS: ${gcsPath}`);
       } catch (error) {
         console.error(`Failed to delete from GCS: ${gcsPath}`, error);
+        return false;
       }
     }
     
     // Always clean up from memory
     this.tempFiles.delete(fileId);
     console.log(`File cleaned up from memory: ${fileId}`);
+    return true;
   }
 
   /**

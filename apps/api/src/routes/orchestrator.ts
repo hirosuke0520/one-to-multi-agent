@@ -52,10 +52,11 @@ orchestrator.post(
           profile,
         });
 
-        // Start processing all jobs in parallel
-        jobs.forEach(({ jobId, platform }) => {
+        // Start processing the single job (handles all platforms)
+        const uniqueJobIds = [...new Set(jobs.map(job => job.jobId))];
+        uniqueJobIds.forEach(jobId => {
           orchestratorService.processJob(jobId).catch(error => {
-            console.error(`Job ${jobId} for ${platform} failed:`, error);
+            console.error(`Job ${jobId} failed:`, error);
           });
         });
 
@@ -90,10 +91,11 @@ orchestrator.post(
           profile,
         });
 
-        // Start processing all jobs in parallel
-        jobs.forEach(({ jobId, platform }) => {
+        // Start processing the single job (handles all platforms)
+        const uniqueJobIds = [...new Set(jobs.map(job => job.jobId))];
+        uniqueJobIds.forEach(jobId => {
           orchestratorService.processJob(jobId).catch(error => {
-            console.error(`Job ${jobId} for ${platform} failed:`, error);
+            console.error(`Job ${jobId} failed:`, error);
           });
         });
 

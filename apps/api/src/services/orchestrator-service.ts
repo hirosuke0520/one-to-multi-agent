@@ -4,6 +4,8 @@ import { TranscriberService } from "./transcriber-service.js";
 import { ContentService } from "./content-service.js";
 import { PublisherService } from "./publisher-service.js";
 import { StorageService, StoredFile } from "./storage-service.js";
+import { MetadataServiceSQL, ContentMetadata, PlatformContent } from "./metadata-service-sql.js";
+import { PreviewService } from "./preview-service.js";
 import { ContentSource } from "@one-to-multi-agent/core";
 
 export interface ProcessJobRequest {
@@ -53,6 +55,8 @@ export class OrchestratorService {
   private contentService: ContentService;
   private publisherService: PublisherService;
   private storageService: StorageService;
+  private metadataService: MetadataServiceSQL;
+  private previewService: PreviewService;
 
   constructor() {
     this.jobService = new JobService();
@@ -60,6 +64,8 @@ export class OrchestratorService {
     this.contentService = new ContentService();
     this.publisherService = new PublisherService();
     this.storageService = new StorageService();
+    this.metadataService = new MetadataServiceSQL();
+    this.previewService = new PreviewService();
   }
 
   async createJob(request: ProcessJobRequest): Promise<string> {
@@ -100,11 +106,9 @@ export class OrchestratorService {
   }
 
   async createJobs(request: ProcessJobRequest): Promise<{ jobs: Array<{ jobId: string; platform: string }> }> {
-    const jobs: Array<{ jobId: string; platform: string }> = [];
-    
     let storedFile: StoredFile | undefined;
     
-    // Upload file once and share across all jobs
+    // Upload file once if needed
     if (request.fileBuffer && request.fileName && request.mimeType) {
       storedFile = await this.storageService.uploadFile(
         request.fileBuffer,
@@ -113,33 +117,33 @@ export class OrchestratorService {
       );
     }
     
-    // Create separate job for each target platform
-    for (const target of request.targets) {
-      const jobId = uuidv4();
-      
-      const job: Job = {
-        id: jobId,
-        sourceType: request.sourceType,
-        targets: [target], // Single platform per job
-        status: "pending",
-        createdAt: new Date(),
-        updatedAt: new Date(),
-        storedFile, // Shared file reference
-      };
+    // Create single job for all target platforms
+    const jobId = uuidv4();
+    
+    const job: Job = {
+      id: jobId,
+      sourceType: request.sourceType,
+      targets: request.targets, // All platforms in one job
+      status: "pending",
+      createdAt: new Date(),
+      updatedAt: new Date(),
+      storedFile,
+    };
 
-      await this.jobService.saveJob(job);
-      
-      // Create individual request for this job (without fileBuffer)
-      const individualRequest: ProcessJobRequest = {
-        ...request,
-        fileBuffer: undefined, // Don't store buffer in job request
-        storedFile,
-        targets: [target] // Single platform per request
-      };
-      await this.jobService.saveJobRequest(jobId, individualRequest);
-      
-      jobs.push({ jobId, platform: target });
-    }
+    await this.jobService.saveJob(job);
+    
+    // Create job request for all platforms
+    const jobRequest: ProcessJobRequest = {
+      ...request,
+      fileBuffer: undefined, // Don't store buffer in job request
+      storedFile,
+      targets: request.targets // All platforms
+    };
+    
+    await this.jobService.saveJobRequest(jobId, jobRequest);
+    
+    // Return single job with all platforms
+    const jobs = request.targets.map(platform => ({ jobId, platform }));
     
     return { jobs };
   }
@@ -185,23 +189,48 @@ export class OrchestratorService {
         };
       }
 
-      // Step 2: Generate platform-specific content (single platform per job)
-      const target = request.targets[0]; // Single platform per job now
-      if (!target) {
-        throw new Error("No target platform specified");
+      // Step 2: Generate platform-specific content for all target platforms
+      const targets = request.targets;
+      if (!targets || targets.length === 0) {
+        throw new Error("No target platforms specified");
       }
 
-      const platformContent = await this.contentService.generatePlatformContent(
-        sourceContent,
-        target,
-        request.profile
+      const platformResults = await Promise.allSettled(
+        targets.map(async (target) => {
+          try {
+            const platformContent = await this.contentService.generatePlatformContent(
+              sourceContent,
+              target,
+              request.profile
+            );
+            return {
+              platform: target,
+              success: true,
+              content: platformContent,
+            };
+          } catch (error) {
+            console.error(`Failed to generate content for ${target}:`, error);
+            return {
+              platform: target,
+              success: false,
+              error: error instanceof Error ? error.message : "Unknown error",
+            };
+          }
+        })
       );
-      
-      const platformResults = [{
-        platform: target,
-        success: true,
-        content: platformContent,
-      }];
+
+      const resolvedPlatformResults = platformResults.map((result, index) => {
+        const target = targets[index];
+        if (result.status === 'fulfilled') {
+          return result.value;
+        } else {
+          return {
+            platform: target,
+            success: false,
+            error: result.reason instanceof Error ? result.reason.message : "Generation failed",
+          };
+        }
+      });
 
       // Step 3: Save results
       const sourceText = typeof sourceContent === "string" ? sourceContent : 
@@ -209,10 +238,16 @@ export class OrchestratorService {
       
       await this.jobService.saveJobResults(jobId, {
         sourceText,
-        platformResults,
+        platformResults: resolvedPlatformResults,
       });
 
+      // Step 4: Save metadata and generate preview (for history tracking)
+      await this.saveContentMetadata(jobId, request, resolvedPlatformResults, sourceContent);
+
       await this.updateJobStatus(jobId, "completed");
+      
+      // Step 5: Clean up uploaded files after successful completion
+      await this.cleanupFiles(request);
       
     } catch (error) {
       console.error(`Job ${jobId} failed:`, error);
@@ -235,5 +270,104 @@ export class OrchestratorService {
       }
       await this.jobService.saveJob(job);
     }
+  }
+
+  private async saveContentMetadata(
+    jobId: string,
+    request: ProcessJobRequest,
+    platformResults: Array<{ platform: string; success: boolean; content: any }>,
+    sourceContent: ContentSource
+  ): Promise<void> {
+    try {
+      const metadata: ContentMetadata = {
+        id: this.metadataService.generateId(),
+        sourceType: request.sourceType,
+        createdAt: new Date().toISOString(),
+        generatedContent: [],
+      };
+
+      // Add file-specific metadata
+      if (request.storedFile) {
+        metadata.originalFileName = request.storedFile.fileName;
+        metadata.mimeType = request.storedFile.mimeType;
+        metadata.size = request.storedFile.size;
+
+        // Generate preview for audio/video files
+        if (request.sourceType === 'audio' || request.sourceType === 'video') {
+          try {
+            // Download the file temporarily for preview generation
+            const fileBuffer = await this.storageService.downloadFile(
+              request.storedFile.fileId,
+              request.storedFile.gcsPath
+            );
+            
+            if (fileBuffer) {
+              const tempFilePath = `/tmp/preview_${Date.now()}_${request.storedFile.fileName}`;
+              require('fs').writeFileSync(tempFilePath, fileBuffer);
+              
+              if (request.sourceType === 'audio') {
+                metadata.previewData = await this.previewService.generateAudioPreview(tempFilePath);
+              } else {
+                metadata.previewData = await this.previewService.generateVideoPreview(tempFilePath);
+              }
+              
+              // Clean up temp file
+              await this.previewService.cleanup([tempFilePath]);
+            }
+          } catch (previewError) {
+            console.warn('Failed to generate preview:', previewError);
+            // Continue without preview data
+          }
+        }
+      }
+
+      // Transform platform results to metadata format
+      metadata.generatedContent = platformResults.map((result): PlatformContent => {
+        const content = result.content;
+        return {
+          platform: result.platform,
+          title: content.title,
+          description: content.description,
+          content: content.content || content.primaryText,
+          hashtags: content.hashtags || content.tags,
+          script: content.script,
+          chapters: content.chapters,
+        };
+      });
+
+      // Save metadata to database
+      await this.metadataService.saveMetadata(metadata);
+      console.log(`Metadata saved for job ${jobId}: ${metadata.id}`);
+      
+    } catch (error) {
+      console.error('Failed to save content metadata:', error);
+      // Don't throw error - this should not fail the job
+    }
+  }
+
+  private async cleanupFiles(request: ProcessJobRequest): Promise<void> {
+    try {
+      if (request.storedFile) {
+        // Delete the uploaded file from GCS
+        const deleted = await this.storageService.deleteFile(
+          request.storedFile.fileId,
+          request.storedFile.gcsPath
+        );
+        
+        if (deleted) {
+          console.log(`Cleaned up uploaded file: ${request.storedFile.fileName}`);
+        } else {
+          console.warn(`Failed to cleanup uploaded file: ${request.storedFile.fileName}`);
+        }
+      }
+    } catch (error) {
+      console.error('Error during file cleanup:', error);
+      // Don't throw error - this should not fail the job
+    }
+  }
+
+  // New method for getting content history
+  async getContentHistory(userId?: string, limit = 20): Promise<ContentMetadata[]> {
+    return await this.metadataService.listMetadata(userId, limit);
   }
 }
