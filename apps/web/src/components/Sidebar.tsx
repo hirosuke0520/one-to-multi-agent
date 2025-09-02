@@ -36,6 +36,7 @@ export function Sidebar({ selectedThreadId, onThreadSelect, onNewChat, isOpen, o
 
   useEffect(() => {
     fetchHistory();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const formatDate = (dateString: string) => {
@@ -105,7 +106,11 @@ export function Sidebar({ selectedThreadId, onThreadSelect, onNewChat, isOpen, o
           }
         } else if (typeof firstContent.content === 'object') {
           // If content is an object, try to extract text
-          const obj = firstContent.content as any;
+          const obj = firstContent.content as {
+            content?: string;
+            primaryText?: string;
+            text?: string;
+          };
           text = obj.content || obj.primaryText || obj.text || '';
         }
         
@@ -141,17 +146,7 @@ export function Sidebar({ selectedThreadId, onThreadSelect, onNewChat, isOpen, o
     return `${getSourceTypeDisplay(thread.sourceType)}コンテンツ`;
   };
 
-  const getPlatformDisplay = (platform: string) => {
-    const platformMap: Record<string, string> = {
-      'threads': 'Threads',
-      'twitter': 'Twitter',
-      'instagram': 'Instagram',
-      'wordpress': 'WordPress',
-      'youtube': 'YouTube',
-      'tiktok': 'TikTok'
-    };
-    return platformMap[platform] || platform;
-  };
+  // Remove unused function - getPlatformDisplay
 
   const getSourceTypeDisplay = (sourceType: string) => {
     switch (sourceType) {

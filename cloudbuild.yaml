@@ -37,7 +37,7 @@ steps:
       - 'Dockerfile.web.prod'
       - '.'
       - '--build-arg'
-      - 'NEXT_PUBLIC_API_URL=https://api-${_SERVICE_NAME}.run.app'
+      - 'NEXT_PUBLIC_API_URL=https://api-one-to-multi-agent-675967400701.asia-northeast1.run.app'
     id: 'build-web'
 
   - name: 'gcr.io/cloud-builders/docker'
@@ -116,7 +116,7 @@ steps:
 substitutions:
   _SERVICE_NAME: 'one-to-multi-agent'
   _REGION: 'asia-northeast1'
-  _CLOUD_SQL_INSTANCE: 'one-to-multi-agent:us-central1:one-to-multi-agent-db'
+  _CLOUD_SQL_INSTANCE: 'one-to-multi-agent:asia-northeast1:one-to-multi-agent-db'
   _GCS_BUCKET: 'one-to-multi-agent-storage'
 
 options:

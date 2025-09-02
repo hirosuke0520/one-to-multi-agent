@@ -1,50 +1,24 @@
-# Production Dockerfile for Next.js Web App
-FROM node:22-alpine AS base
+# Simple Production Dockerfile for Web
+FROM node:18-alpine
 
-# Install dependencies only when needed
-FROM base AS deps
-RUN apk add --no-cache libc6-compat
 WORKDIR /app
 
-# Copy package files for monorepo
-COPY package*.json ./
-COPY apps/web/package*.json ./apps/web/
-COPY packages/core/package*.json ./packages/core/
-
-# Install dependencies
-RUN npm ci --only=production
-
-# Rebuild the source code only when needed
-FROM base AS builder
-WORKDIR /app
-COPY --from=deps /app/node_modules ./node_modules
+# Copy everything
 COPY . .
 
-# Build the Next.js application
-RUN npm run build --workspace=@one-to-multi-agent/web
+# Install dependencies
+RUN npm install
 
-# Production image, copy all the files and run next
-FROM base AS runner
-WORKDIR /app
+# Build Next.js
+ARG NEXT_PUBLIC_API_URL
+ENV NEXT_PUBLIC_API_URL=$NEXT_PUBLIC_API_URL
 
-ENV NODE_ENV production
-ENV NEXT_TELEMETRY_DISABLED 1
+RUN npm run build
 
-RUN addgroup --system --gid 1001 nodejs
-RUN adduser --system --uid 1001 nextjs
-
-# Copy built application
-COPY --from=builder /app/apps/web/public ./apps/web/public
-COPY --from=builder --chown=nextjs:nodejs /app/apps/web/.next/standalone ./
-COPY --from=builder --chown=nextjs:nodejs /app/apps/web/.next/static ./apps/web/.next/static
-
-USER nextjs
-
-# Set working directory to web app
-WORKDIR /app/apps/web
+# Set environment
+ENV NODE_ENV=production
+ENV PORT=3000
 
 EXPOSE 3000
 
-ENV PORT 3000
-
-CMD ["node", "server.js"]
+CMD ["npm", "start"]

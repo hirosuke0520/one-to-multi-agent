@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState, useEffect } from 'react';
+import Image from 'next/image';
 import { getApiUrl } from '../lib/config';
 
 interface AudioPreview {
@@ -191,12 +192,14 @@ export function ContentHistory({ isOpen, onClose }: ContentHistoryProps) {
                   {/* Preview data */}
                   {item.previewData && (
                     <div className="mb-3">
-                      {item.sourceType === 'video' && 'thumbnailUrl' in item.previewData && (
+                      {item.sourceType === 'video' && 'thumbnailUrl' in item.previewData && item.previewData.thumbnailUrl && (
                         <div className="mb-2">
-                          <img
+                          <Image
                             src={item.previewData.thumbnailUrl}
                             alt="Video thumbnail"
-                            className="w-32 h-24 object-cover rounded"
+                            width={128}
+                            height={96}
+                            className="object-cover rounded"
                           />
                         </div>
                       )}
@@ -217,7 +220,7 @@ export function ContentHistory({ isOpen, onClose }: ContentHistoryProps) {
                       
                       {item.previewData.transcript && (
                         <p className="text-sm text-gray-700 italic">
-                          "{item.previewData.transcript}..."
+                          &quot;{item.previewData.transcript}...&quot;
                         </p>
                       )}
                     </div>

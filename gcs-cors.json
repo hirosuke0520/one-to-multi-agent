@@ -1,0 +1,12 @@
+[
+  {
+    "origin": [
+      "http://localhost:3000",
+      "https://web-675967400701.asia-northeast1.run.app",
+      "https://web-one-to-multi-agent-675967400701.asia-northeast1.run.app"
+    ],
+    "method": ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+    "responseHeader": ["Content-Type", "Authorization", "Content-Range", "Accept-Ranges"],
+    "maxAgeSeconds": 3600
+  }
+]

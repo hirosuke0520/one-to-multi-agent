@@ -157,9 +157,11 @@ export const useContentGenerator = () => {
           setEditableContent(initialEditableContent);
           
           // Refresh history after successful content generation
+          // Longer delay for video processing
+          const delay = sourceType === 'video' ? 5000 : 1000;
           setTimeout(() => {
             refreshHistory();
-          }, 1000); // Small delay to ensure database is updated
+          }, delay); // Delay to ensure database is updated
         } else {
           const platformResults: PlatformResult[] = jobs.map(job => ({ 
             platform: job.platform, 
@@ -169,7 +171,7 @@ export const useContentGenerator = () => {
           const finalResults: JobResults = { sourceText: content || file?.name || '', platformResults };
           setResults(finalResults);
         }
-      } catch (error) {
+      } catch {
         const platformResults: PlatformResult[] = jobs.map(job => ({ 
           platform: job.platform, 
           success: false, 
@@ -206,9 +208,11 @@ export const useContentGenerator = () => {
       
       // Refresh history after successful content generation  
       if (platformResults.some(r => r.success)) {
+        // Longer delay for video processing
+        const delay = sourceType === 'video' ? 5000 : 1000;
         setTimeout(() => {
           refreshHistory();
-        }, 1000); // Small delay to ensure database is updated
+        }, delay); // Delay to ensure database is updated
       }
     }
     

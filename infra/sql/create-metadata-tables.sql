@@ -6,6 +6,7 @@ CREATE TABLE IF NOT EXISTS content_metadata (
     source_type VARCHAR(20) NOT NULL CHECK (source_type IN ('text', 'audio', 'video')),
     source_text TEXT, -- For text input content
     original_file_name VARCHAR(255),
+    original_file_path VARCHAR(500), -- Path to stored file
     file_size BIGINT,
     mime_type VARCHAR(100),
     duration INTEGER, -- in seconds
@@ -59,7 +60,11 @@ BEGIN
 END;
 $$ language 'plpgsql';
 
--- Trigger for automatic updated_at
+-- Trigger for automatic updated_at (drop and recreate to avoid errors)
+DROP TRIGGER IF EXISTS update_content_metadata_updated_at ON content_metadata;
 CREATE TRIGGER update_content_metadata_updated_at
     BEFORE UPDATE ON content_metadata
     FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+
+-- Add missing columns for existing tables
+ALTER TABLE content_metadata ADD COLUMN IF NOT EXISTS original_file_path VARCHAR(500);

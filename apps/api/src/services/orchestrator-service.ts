@@ -3,7 +3,8 @@ import { JobService } from "./job-service.js";
 import { TranscriberService } from "./transcriber-service.js";
 import { ContentService } from "./content-service.js";
 import { PublisherService } from "./publisher-service.js";
-import { FileStorageService, StoredFile } from "./file-storage-service.js";
+import { StoredFile } from "./file-storage-service.js";
+import { getStorageService } from "../config/storage.js";
 import { MetadataServiceSQL, ContentMetadata, PlatformContent } from "./metadata-service-sql.js";
 import { PreviewService } from "./preview-service.js";
 import { VideoConverterService } from "./video-converter-service.js";
@@ -55,23 +56,33 @@ export class OrchestratorService {
   private transcriberService: TranscriberService;
   private contentService: ContentService;
   private publisherService: PublisherService;
-  private fileStorageService: FileStorageService;
+  private fileStorageService: any; // Storage service (GCS or local)
   private metadataService: MetadataServiceSQL;
   private previewService: PreviewService;
   private videoConverterService: VideoConverterService;
+  private initialized: Promise<void>;
 
   constructor() {
     this.jobService = new JobService();
     this.transcriberService = new TranscriberService();
     this.contentService = new ContentService();
     this.publisherService = new PublisherService();
-    this.fileStorageService = new FileStorageService();
     this.metadataService = new MetadataServiceSQL();
     this.previewService = new PreviewService();
     this.videoConverterService = new VideoConverterService();
+    this.initialized = this.initializeStorage();
+  }
+
+  private async initializeStorage(): Promise<void> {
+    this.fileStorageService = await getStorageService();
+  }
+
+  private async ensureInitialized(): Promise<void> {
+    await this.initialized;
   }
 
   async createJob(request: ProcessJobRequest): Promise<string> {
+    await this.ensureInitialized();
     const jobId = uuidv4();
     
     let storedFile: StoredFile | undefined;
@@ -99,7 +110,7 @@ export class OrchestratorService {
         request.fileName,
         request.mimeType
       );
-      console.log(`File stored: ${storedFile.filePath}`);
+      console.log(`File stored: ${storedFile?.filePath}`);
     }
     
     const job: Job = {
@@ -126,6 +137,7 @@ export class OrchestratorService {
   }
 
   async createJobs(request: ProcessJobRequest): Promise<{ jobs: Array<{ jobId: string; platform: string }> }> {
+    await this.ensureInitialized();
     let storedFile: StoredFile | undefined;
     let processedBuffer = request.fileBuffer;
     
@@ -151,7 +163,7 @@ export class OrchestratorService {
         request.fileName,
         request.mimeType
       );
-      console.log(`File stored: ${storedFile.filePath}`);
+      console.log(`File stored: ${storedFile?.filePath}`);
     }
     
     // Create single job for all target platforms
@@ -186,6 +198,7 @@ export class OrchestratorService {
   }
 
   async processJob(jobId: string): Promise<void> {
+    await this.ensureInitialized();
     let fileBuffer: Buffer | undefined;
     
     try {
@@ -218,7 +231,7 @@ export class OrchestratorService {
         fileBuffer = downloadedBuffer;
         
         sourceContent = {
-          fileBuffer: fileBuffer,
+          fileBuffer: downloadedBuffer,
           fileName: request.storedFile.fileName,
           mimeType: request.storedFile.mimeType,
           sourceType: request.sourceType

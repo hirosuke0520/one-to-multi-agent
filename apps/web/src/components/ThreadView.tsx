@@ -53,10 +53,6 @@ export function ThreadView({ threadId }: ThreadViewProps) {
   const [error, setError] = useState<string | null>(null);
   const [editableContent, setEditableContent] = useState<Record<string, Partial<CorePlatformContent>>>({});
 
-  useEffect(() => {
-    fetchThread();
-  }, [threadId]);
-
   const fetchThread = async () => {
     setLoading(true);
     setError(null);
@@ -84,7 +80,7 @@ export function ThreadView({ threadId }: ThreadViewProps) {
       
       // Initialize editable content from thread data
       const initialEditableContent: Record<string, Partial<CorePlatformContent>> = {};
-      foundThread.generatedContent.forEach((content: any) => {
+      foundThread.generatedContent.forEach((content: PlatformContent) => {
         // Parse JSON content if it's stored as string
         let parsedContent;
         if (typeof content.content === 'string') {
@@ -106,6 +102,11 @@ export function ThreadView({ threadId }: ThreadViewProps) {
       setLoading(false);
     }
   };
+
+  useEffect(() => {
+    fetchThread();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [threadId]);
 
   const formatDate = (dateString: string) => {
     return new Date(dateString).toLocaleString('ja-JP');
@@ -148,7 +149,7 @@ export function ThreadView({ threadId }: ThreadViewProps) {
   const getPlatformResults = (): PlatformResult[] => {
     if (!thread) return [];
     
-    return thread.generatedContent.map((content: any) => {
+    return thread.generatedContent.map((content: PlatformContent) => {
       // Parse JSON content if it's stored as string
       let parsedContent;
       if (typeof content.content === 'string') {

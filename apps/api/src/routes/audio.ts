@@ -1,10 +1,16 @@
 import { Hono } from "hono";
-import { FileStorageService } from "../services/file-storage-service.js";
+import { getStorageService } from "../config/storage.js";
 import { MetadataServiceSQL } from "../services/metadata-service-sql.js";
 
 const audio = new Hono();
-const fileStorageService = new FileStorageService();
+let fileStorageService: any;
 const metadataService = new MetadataServiceSQL();
+
+// Initialize storage service
+const initializeStorage = async () => {
+  fileStorageService = await getStorageService();
+};
+initializeStorage();
 
 // GET /audio/:contentId - Stream audio file
 audio.get("/:contentId", async (c) => {
@@ -28,6 +34,11 @@ audio.get("/:contentId", async (c) => {
 
     try {
       console.log(`Fetching audio file - Content ID: ${contentId}, Path: ${metadata.originalFilePath}`);
+      
+      // Ensure storage is initialized
+      if (!fileStorageService) {
+        await initializeStorage();
+      }
       
       // Retrieve file from storage using stored path
       const fileBuffer = await fileStorageService.getFile(metadata.originalFilePath);

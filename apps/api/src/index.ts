@@ -15,10 +15,11 @@ app.use("*", cors({
   origin: [
     "http://localhost:3000", 
     "http://web:3000",
-    "https://web-675967400701.asia-northeast1.run.app"
+    "https://web-675967400701.asia-northeast1.run.app",
+    "https://web-one-to-multi-agent-675967400701.asia-northeast1.run.app"
   ],
   allowMethods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
-  allowHeaders: ["Content-Type", "Authorization"],
+  allowHeaders: ["Content-Type", "Authorization", "x-api-key"],
   credentials: true,
 }));
 

@@ -20,34 +20,19 @@ export class DatabaseService {
         connectionTimeoutMillis: 2000,
       });
     } else {
-      // Cloud SQL connection
-      const connectionName = process.env.CLOUD_SQL_CONNECTION_NAME;
-      
-      if (connectionName) {
-        // Using Unix domain socket for Cloud Run
-        this.pool = new Pool({
-          user: process.env.DB_USER || 'postgres',
-          database: process.env.DB_NAME || 'one_to_multi_agent',
-          password: process.env.DB_PASSWORD,
-          host: `/cloudsql/${connectionName}`,
-          max: 10,
-          idleTimeoutMillis: 30000,
-          connectionTimeoutMillis: 2000,
-        });
-      } else {
-        // TCP connection fallback
-        this.pool = new Pool({
-          user: process.env.DB_USER || 'postgres',
-          host: process.env.DB_HOST,
-          database: process.env.DB_NAME || 'one_to_multi_agent',
-          password: process.env.DB_PASSWORD,
-          port: parseInt(process.env.DB_PORT || '5432'),
-          ssl: process.env.NODE_ENV === 'production' ? { rejectUnauthorized: false } : false,
-          max: 10,
-          idleTimeoutMillis: 30000,
-          connectionTimeoutMillis: 2000,
-        });
-      }
+      // Cloud SQL connection via Unix domain socket (Cloud SQL Proxy)
+      // DB_HOST should be like: /cloudsql/PROJECT:REGION:INSTANCE
+      this.pool = new Pool({
+        user: process.env.DB_USER || 'postgres',
+        database: process.env.DB_NAME || 'one_to_multi_agent',
+        password: process.env.DB_PASSWORD,
+        host: process.env.DB_HOST,
+        // No SSL when using Cloud SQL Proxy
+        ssl: false,
+        max: 10,
+        idleTimeoutMillis: 30000,
+        connectionTimeoutMillis: 2000,
+      });
     }
 
     this.pool.on('error', (err) => {
