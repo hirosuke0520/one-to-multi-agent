@@ -54,96 +54,69 @@ export function Sidebar({ selectedThreadId, onThreadSelect, onNewChat, isOpen, o
   };
 
   const getThreadTitle = (thread: ContentMetadata) => {
-    // Priority 1: For text input, use sourceText
-    if (thread.sourceType === 'text' && thread.sourceText) {
-      // Clean up JSON strings and extract meaningful text
-      let text = thread.sourceText;
-      
-      // If it looks like JSON, try to parse and extract meaningful content
-      if (text.startsWith('{') || text.startsWith('[')) {
-        try {
-          const parsed = JSON.parse(text);
-          // Extract text from parsed JSON if it has content, title, or text fields
-          text = parsed.content || parsed.title || parsed.text || text;
-        } catch {
-          // Not valid JSON or parsing failed, use as is
+    // Always try to get title from generated content, regardless of source type
+    if (thread.generatedContent && thread.generatedContent.length > 0) {
+      for (const content of thread.generatedContent) {
+        // First, check if there's a direct title property
+        if (content.title && typeof content.title === 'string' && content.title.trim()) {
+          const title = content.title.trim();
+          if (title && !title.startsWith('{')) {
+            return title.length > 40 ? title.slice(0, 40) + '...' : title;
+          }
         }
-      }
-      
-      // Remove excessive whitespace and trim
-      text = text.replace(/\s+/g, ' ').trim();
-      
-      // Return first 40 characters
-      if (text.length > 40) {
-        return text.slice(0, 40) + '...';
-      }
-      return text;
-    }
-    
-    // Priority 2: For audio/video, try to extract from the first generated content
-    if ((thread.sourceType === 'audio' || thread.sourceType === 'video') && 
-        thread.generatedContent && thread.generatedContent.length > 0) {
-      
-      // Get the first platform's content
-      const firstContent = thread.generatedContent[0];
-      
-      // Try to extract meaningful text from content
-      if (firstContent.content) {
-        let text = '';
         
-        // Handle different content formats
-        if (typeof firstContent.content === 'string') {
-          text = firstContent.content;
-          
-          // Try to parse if it's JSON string
-          if (text.startsWith('{') || text.startsWith('[')) {
+        // Then, try to extract from content if it's JSON
+        if (content.content && typeof content.content === 'string') {
+          // Try to parse JSON content
+          if (content.content.startsWith('{') || content.content.startsWith('[')) {
             try {
-              const parsed = JSON.parse(text);
-              text = parsed.content || parsed.primaryText || parsed.text || text;
-            } catch {
-              // Use as is if not valid JSON
+              const parsed = JSON.parse(content.content);
+              
+              // Try various field names for title
+              const titleFields = ['title', 'excerpt', 'description'];
+              for (const field of titleFields) {
+                if (parsed[field] && typeof parsed[field] === 'string') {
+                  const title = parsed[field].trim();
+                  if (title && title.length > 5) {
+                    return title.length > 40 ? title.slice(0, 40) + '...' : title;
+                  }
+                }
+              }
+              
+              // Try various field names for content text
+              const textFields = ['text', 'content', 'primaryText', 'caption', 'body', 'message'];
+              for (const field of textFields) {
+                if (parsed[field] && typeof parsed[field] === 'string') {
+                  const text = parsed[field].replace(/\s+/g, ' ').trim();
+                  if (text && text.length > 5) {
+                    return text.length > 40 ? text.slice(0, 40) + '...' : text;
+                  }
+                }
+              }
+              
+              // For YouTube, try script field
+              if (parsed.script && typeof parsed.script === 'string') {
+                const script = parsed.script.replace(/\s+/g, ' ').trim();
+                if (script && script.length > 5) {
+                  return script.length > 40 ? script.slice(0, 40) + '...' : script;
+                }
+              }
+            } catch (e) {
+              console.debug('Failed to parse JSON content:', e);
             }
           }
-        } else if (typeof firstContent.content === 'object') {
-          // If content is an object, try to extract text
-          const obj = firstContent.content as {
-            content?: string;
-            primaryText?: string;
-            text?: string;
-          };
-          text = obj.content || obj.primaryText || obj.text || '';
-        }
-        
-        if (text) {
-          // Clean up and extract meaningful text
-          text = text.replace(/\s+/g, ' ').trim();
           
-          // Return first 40 characters
-          if (text.length > 5) {
-            return text.length > 40 ? text.slice(0, 40) + '...' : text;
+          // If not JSON or failed to parse, use content as is
+          const cleanText = content.content.replace(/\s+/g, ' ').trim();
+          if (cleanText && cleanText.length > 5 && !cleanText.startsWith('{')) {
+            return cleanText.length > 40 ? cleanText.slice(0, 40) + '...' : cleanText;
           }
         }
       }
-      
-      // If no content found, try title
-      if (firstContent.title && typeof firstContent.title === 'string' && firstContent.title.trim()) {
-        const title = firstContent.title.trim();
-        return title.length > 40 ? title.slice(0, 40) + '...' : title;
-      }
     }
     
-    // Priority 3: For audio/video without content, use original file name
-    if ((thread.sourceType === 'audio' || thread.sourceType === 'video') && thread.originalFileName) {
-      // Remove file extension and clean up
-      const nameWithoutExt = thread.originalFileName.replace(/\.[^/.]+$/, '');
-      if (nameWithoutExt.length > 30) {
-        return nameWithoutExt.slice(0, 30) + '...';
-      }
-      return nameWithoutExt;
-    }
-    
-    // Fallback: Use source type
-    return `${getSourceTypeDisplay(thread.sourceType)}コンテンツ`;
+    // Fallback: Use generic description
+    return `${getSourceTypeDisplay(thread.sourceType)}から生成`;
   };
 
   // Remove unused function - getPlatformDisplay

@@ -1,5 +1,5 @@
 # Development Dockerfile for Hono API
-FROM node:18-alpine
+FROM node:22-alpine
 
 # Install ffmpeg for video processing
 RUN apk add --no-cache ffmpeg
@@ -7,18 +7,24 @@ RUN apk add --no-cache ffmpeg
 # Set working directory
 WORKDIR /app
 
-# Install dependencies
+# Copy root package files for workspace
 COPY package*.json ./
-RUN npm install
+COPY apps/api/package*.json ./apps/api/
+COPY packages/core/package*.json ./packages/core/
 
-# Copy source code
+# Install dependencies (will install workspace dependencies)
+RUN npm ci
+
+# Copy application files
 COPY . .
 
 # Create data and temp directories
-RUN mkdir -p /app/data /app/temp
+RUN mkdir -p /app/apps/api/data /app/apps/api/temp /app/apps/api/storage
 
 # Expose port
 EXPOSE 8787
+
+WORKDIR /app/apps/api
 
 # Start development server
 CMD ["npm", "run", "dev"]
