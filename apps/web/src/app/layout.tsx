@@ -32,7 +32,7 @@ export default async function RootLayout({
   return (
     <html lang="ja">
       <body
-        className={`${geistSans.variable} ${geistMono.variable} antialiased`}
+        className={`${geistSans.variable} ${geistMono.variable} antialiased h-screen overflow-hidden`}
       >
         <Script src="/runtime-config.js" strategy="beforeInteractive" />
         <SidebarProvider>

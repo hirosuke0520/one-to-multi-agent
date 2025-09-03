@@ -196,7 +196,7 @@ export function Sidebar({
       <div
         className={`
         fixed md:static inset-y-0 left-0 z-50
-        w-3/4 md:w-64 bg-gray-900 text-white h-screen flex flex-col
+        w-3/4 md:w-64 bg-gray-900 text-white h-screen md:h-[calc(100vh-64px)] flex flex-col
         transform transition-transform duration-300 ease-in-out
         ${isOpen ? "translate-x-0" : "-translate-x-full md:translate-x-0"}
       `}
