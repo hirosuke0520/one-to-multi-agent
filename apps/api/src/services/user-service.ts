@@ -100,8 +100,8 @@ export class UserService {
    * ユーザー情報を更新
    */
   async update(userId: string, updates: Partial<Omit<User, 'id' | 'created_at'>>): Promise<User> {
-    const fields = [];
-    const values = [];
+    const fields: string[] = [];
+    const values: any[] = [];
     let paramCount = 1;
 
     Object.entries(updates).forEach(([key, value]) => {
@@ -133,6 +133,6 @@ export class UserService {
       'DELETE FROM users WHERE id = $1',
       [userId]
     );
-    return result.rowCount > 0;
+    return (result.rowCount ?? 0) > 0;
   }
 }
