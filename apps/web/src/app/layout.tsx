@@ -1,7 +1,8 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import Script from "next/script";
-import { HistoryProvider } from "../contexts/HistoryContext";
+import { auth } from "../../auth";
+import { HistoryProviderWrapper } from "../components/HistoryProviderWrapper";
 import { Header } from "../components/Header";
 import "./globals.css";
 
@@ -20,11 +21,13 @@ export const metadata: Metadata = {
   description: "AIでSNSコンテンツを一括生成",
 };
 
-export default function RootLayout({
+export default async function RootLayout({
   children,
 }: Readonly<{
   children: React.ReactNode;
 }>) {
+  const session = await auth();
+  
   return (
     <html lang="ja">
       <body
@@ -32,7 +35,9 @@ export default function RootLayout({
       >
         <Script src="/runtime-config.js" strategy="beforeInteractive" />
         <Header />
-        <HistoryProvider>{children}</HistoryProvider>
+        <HistoryProviderWrapper userId={session?.user?.id}>
+          {children}
+        </HistoryProviderWrapper>
       </body>
     </html>
   );

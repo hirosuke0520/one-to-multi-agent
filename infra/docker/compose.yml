@@ -8,15 +8,12 @@ services:
     env_file:
       - ../../.env
     volumes:
-      - ../../apps/web:/app/apps/web
-      - ../../packages:/app/packages
-      - ../../package.json:/app/package.json
-      - ../../package-lock.json:/app/package-lock.json
-      - web_node_modules:/app/node_modules
-      - web_app_node_modules:/app/apps/web/node_modules
+      - ../../:/app
       - web_next:/app/apps/web/.next
+      - /app/node_modules
+      - /app/apps/web/node_modules
     working_dir: /app/apps/web
-    command: npm run dev
+    command: sh -c "npm install && npm run dev"
     depends_on:
       - api
     networks:
@@ -39,22 +36,19 @@ services:
       - GCP_PROJECT_ID=one-to-multi-agent
       - DB_HOST=postgres
       - DB_USER=postgres
-      - DB_PASSWORD=password
-      - DB_NAME=one_to_multi_agent
+      - DB_PASSWORD=postgres
+      - DB_NAME=postgres
       - DB_PORT=5432
     volumes:
-      - ../../apps/api:/app/apps/api
-      - ../../packages:/app/packages
-      - ../../package.json:/app/package.json
-      - ../../package-lock.json:/app/package-lock.json
-      - api_node_modules:/app/node_modules
-      - api_app_node_modules:/app/apps/api/node_modules
+      - ../../:/app
       - api_data:/app/apps/api/data
       - api_temp:/app/apps/api/temp
       - api_storage:/app/apps/api/storage
       - ../../gcp-service-account-key.json:/app/gcp-service-account-key.json:ro
+      - /app/node_modules
+      - /app/apps/api/node_modules
     working_dir: /app/apps/api
-    command: npm run dev
+    command: sh -c "npm install && npm run dev"
     depends_on:
       postgres:
         condition: service_healthy
@@ -65,16 +59,15 @@ services:
   postgres:
     image: postgres:15-alpine
     environment:
-      POSTGRES_DB: one_to_multi_agent
+      POSTGRES_DB: postgres
       POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: password
+      POSTGRES_PASSWORD: postgres
     ports:
       - "5432:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
-      - ../sql/create-metadata-tables.sql:/docker-entrypoint-initdb.d/01-create-metadata-tables.sql
-      - ../sql/add-original-file-columns.sql:/docker-entrypoint-initdb.d/02-add-original-file-columns.sql
-      - ./init-db.sql:/docker-entrypoint-initdb.d/03-init-db.sql
+      - ../sql/04-add-user-tables.sql:/docker-entrypoint-initdb.d/01-add-user-tables.sql
+      - ../sql/05-create-history-tables.sql:/docker-entrypoint-initdb.d/02-create-history-tables.sql
     networks:
       - app-network
     healthcheck:
@@ -95,11 +88,7 @@ services:
       - production
 
 volumes:
-  web_node_modules:
-  web_app_node_modules:
   web_next:
-  api_node_modules:
-  api_app_node_modules:
   api_data:
   api_temp:
   api_storage:

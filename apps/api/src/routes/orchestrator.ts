@@ -8,6 +8,7 @@ const processSchema = z.object({
   sourceType: z.enum(["text", "audio", "video"]),
   content: z.string().optional(),
   targets: z.array(z.string()).min(1),
+  userId: z.string().optional(),
   profile: z.object({
     tone: z.string().optional(),
     audience: z.string().optional(),
@@ -29,6 +30,7 @@ orchestrator.post(
         const sourceType = body.get("sourceType") as string;
         const targets = JSON.parse(body.get("targets") as string || "[]");
         const profile = JSON.parse(body.get("profile") as string || "{}");
+        const userId = body.get("userId") as string | undefined;
         const uploadedFile = body.get("file") as File;
 
         if (!uploadedFile) {
@@ -50,6 +52,7 @@ orchestrator.post(
           mimeType: uploadedFile.type,
           targets,
           profile,
+          userId,
         });
 
         // Start processing the single job (handles all platforms)
@@ -81,7 +84,7 @@ orchestrator.post(
           }, 400);
         }
         
-        const { sourceType, content, targets, profile } = validation.data;
+        const { sourceType, content, targets, profile, userId } = validation.data;
         
         const orchestratorService = new OrchestratorService();
         const { jobs } = await orchestratorService.createJobs({
@@ -89,6 +92,7 @@ orchestrator.post(
           content,
           targets,
           profile,
+          userId,
         });
 
         // Start processing the single job (handles all platforms)

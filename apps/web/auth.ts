@@ -21,10 +21,12 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
       // Allow OAuth sign in without blocking
       if (account?.provider === "google") {
         // Fire and forget - don't block authentication
-        fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8787'}/api/auth/signin`, {
-          method: 'POST',
+        // Use internal Docker network URL for server-side calls
+        const apiUrl = process.env.INTERNAL_API_URL || "http://api:8787";
+        fetch(`${apiUrl}/api/auth/signin`, {
+          method: "POST",
           headers: {
-            'Content-Type': 'application/json',
+            "Content-Type": "application/json",
           },
           body: JSON.stringify({
             googleId: profile?.sub,
@@ -32,10 +34,10 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
             name: profile?.name,
             picture: profile?.picture,
           }),
-        }).catch(error => {
-          console.error('Error saving user to database:', error);
+        }).catch((error) => {
+          console.error("Error saving user to database:", error);
         });
-        
+
         return true; // Always allow sign in
       }
       return true;

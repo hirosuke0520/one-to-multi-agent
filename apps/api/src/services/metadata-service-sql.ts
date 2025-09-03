@@ -215,6 +215,7 @@ export class MetadataServiceSQL {
       
       const params: any[] = [];
       
+      // Filter by userId if provided
       if (userId) {
         query += ` WHERE cm.user_id = $1`;
         params.push(userId);

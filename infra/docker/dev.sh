@@ -29,9 +29,20 @@ check_docker() {
 
 # Function to install dependencies
 install_deps() {
-    echo -e "${YELLOW}📦 Installing dependencies...${NC}"
+    echo -e "${YELLOW}📦 Installing dependencies locally...${NC}"
+    
+    # Update root dependencies
     npm install
-    echo -e "${GREEN}✅ Dependencies installed${NC}"
+    
+    # Install and generate package-lock.json for web
+    echo -e "${YELLOW}📝 Installing dependencies for web...${NC}"
+    (cd apps/web && npm install)
+    
+    # Install and generate package-lock.json for api
+    echo -e "${YELLOW}📝 Installing dependencies for api...${NC}"
+    (cd apps/api && npm install)
+    
+    echo -e "${GREEN}✅ All dependencies installed locally${NC}"
     echo
 }
 
@@ -39,7 +50,14 @@ install_deps() {
 start_services() {
     echo -e "${YELLOW}🐳 Starting Docker services...${NC}"
     
-    # Use the docker-compose file from the infra directory
+    # Stop containers if running
+    docker compose -f infra/docker/compose.yml down
+    
+    # Build and start containers (no volume removal needed since we're mounting local files)
+    echo -e "${YELLOW}🔨 Building Docker images...${NC}"
+    docker compose -f infra/docker/compose.yml build
+    
+    # Start containers
     docker compose -f infra/docker/compose.yml up -d
     
     echo -e "${GREEN}✅ Services started!${NC}"

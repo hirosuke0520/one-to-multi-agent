@@ -10,6 +10,7 @@ const nextConfig = {
       },
     ],
   },
+  transpilePackages: ["next-auth"],
 };
 
 module.exports = nextConfig;

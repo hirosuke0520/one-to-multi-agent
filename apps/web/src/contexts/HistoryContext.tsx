@@ -33,7 +33,12 @@ interface HistoryContextType {
 
 const HistoryContext = createContext<HistoryContextType | undefined>(undefined);
 
-export function HistoryProvider({ children }: { children: ReactNode }) {
+interface HistoryProviderProps {
+  children: ReactNode;
+  userId?: string;
+}
+
+export function HistoryProvider({ children, userId }: HistoryProviderProps) {
   const [history, setHistory] = useState<ContentMetadata[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -45,7 +50,11 @@ export function HistoryProvider({ children }: { children: ReactNode }) {
     setError(null);
 
     try {
-      const response = await fetch(`${getApiUrl()}/history`, {
+      const url = userId 
+        ? `${getApiUrl()}/history?userId=${encodeURIComponent(userId)}`
+        : `${getApiUrl()}/history`;
+      
+      const response = await fetch(url, {
         method: 'GET',
         headers: {
           'Content-Type': 'application/json',
@@ -64,7 +73,7 @@ export function HistoryProvider({ children }: { children: ReactNode }) {
     } finally {
       setIsLoading(false);
     }
-  }, [isLoading]);
+  }, [isLoading, userId]);
 
   const refreshHistory = useCallback(async () => {
     // Force refresh without checking isLoading
@@ -72,7 +81,11 @@ export function HistoryProvider({ children }: { children: ReactNode }) {
     setError(null);
 
     try {
-      const response = await fetch(`${getApiUrl()}/history`, {
+      const url = userId 
+        ? `${getApiUrl()}/history?userId=${encodeURIComponent(userId)}`
+        : `${getApiUrl()}/history`;
+      
+      const response = await fetch(url, {
         method: 'GET',
         headers: {
           'Content-Type': 'application/json',
@@ -91,7 +104,7 @@ export function HistoryProvider({ children }: { children: ReactNode }) {
     } finally {
       setIsLoading(false);
     }
-  }, []);
+  }, [userId]);
 
   return (
     <HistoryContext.Provider value={{ history, isLoading, error, fetchHistory, refreshHistory }}>
