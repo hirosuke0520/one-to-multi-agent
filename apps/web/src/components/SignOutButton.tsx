@@ -1,21 +1,23 @@
-import { signOut } from "@/auth";
+"use client";
+
+import { signOut } from "next-auth/react";
+import { useHistory } from "@/contexts/HistoryContext";
 
 export function SignOutButton() {
+  const { refreshHistory } = useHistory();
+
   return (
-    <form
-      action={async () => {
-        "use server";
-        await signOut({
+    <button
+      type="submit"
+      className="px-3 py-1.5 text-sm bg-red-100 text-red-700 hover:bg-red-200 rounded-lg transition-colors cursor-pointer"
+      onClick={() => {
+        signOut({
           redirectTo: "/",
         });
+        refreshHistory();
       }}
     >
-      <button
-        type="submit"
-        className="px-3 py-1.5 text-sm bg-red-100 text-red-700 hover:bg-red-200 rounded-lg transition-colors"
-      >
-        ログアウト
-      </button>
-    </form>
+      ログアウト
+    </button>
   );
 }

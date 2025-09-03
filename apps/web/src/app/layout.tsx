@@ -27,15 +27,15 @@ export default async function RootLayout({
   children: React.ReactNode;
 }>) {
   const session = await auth();
-  
+
   return (
     <html lang="ja">
       <body
         className={`${geistSans.variable} ${geistMono.variable} antialiased`}
       >
         <Script src="/runtime-config.js" strategy="beforeInteractive" />
-        <Header />
         <HistoryProviderWrapper userId={session?.user?.id}>
+          <Header />
           {children}
         </HistoryProviderWrapper>
       </body>
