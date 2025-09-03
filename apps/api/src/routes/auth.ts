@@ -16,10 +16,10 @@ auth.use('/*', cors({
 
 // PostgreSQL接続プール
 const pool = new Pool({
-  host: process.env.DB_HOST || 'localhost',
+  host: process.env.DB_HOST || 'postgres',
   user: process.env.DB_USER || 'postgres',
-  password: process.env.DB_PASSWORD || 'password',
-  database: process.env.DB_NAME || 'one_to_multi_agent',
+  password: process.env.DB_PASSWORD || 'postgres',
+  database: process.env.DB_NAME || 'postgres',
   port: parseInt(process.env.DB_PORT || '5432'),
 });
 
@@ -29,7 +29,7 @@ const userService = new UserService(pool);
  * Google認証コールバック
  * NextAuth.jsから呼び出される
  */
-auth.post("/google", async (c) => {
+auth.post("/signin", async (c) => {
   try {
     const body = await c.req.json();
     const { googleId, email, name, picture } = body;

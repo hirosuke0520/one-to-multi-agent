@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import Script from "next/script";
 import { HistoryProvider } from "../contexts/HistoryContext";
-import { SessionProvider } from "../components/SessionProvider";
+import { Header } from "../components/Header";
 import "./globals.css";
 
 const geistSans = Geist({
@@ -26,16 +26,13 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en">
+    <html lang="ja">
       <body
         className={`${geistSans.variable} ${geistMono.variable} antialiased`}
       >
         <Script src="/runtime-config.js" strategy="beforeInteractive" />
-        <SessionProvider>
-          <HistoryProvider>
-            {children}
-          </HistoryProvider>
-        </SessionProvider>
+        <Header />
+        <HistoryProvider>{children}</HistoryProvider>
       </body>
     </html>
   );

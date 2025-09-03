@@ -1,5 +1,15 @@
-import type { NextConfig } from "next";
-
-const nextConfig: NextConfig = {
-  // Standaloneモードを無効化（通常のビルドを使用）
+/** @type {import('next').NextConfig} */
+const nextConfig = {
+  images: {
+    remotePatterns: [
+      {
+        protocol: "https",
+        hostname: "lh3.googleusercontent.com",
+        port: "",
+        pathname: "/a/**",
+      },
+    ],
+  },
 };
+
+module.exports = nextConfig;
