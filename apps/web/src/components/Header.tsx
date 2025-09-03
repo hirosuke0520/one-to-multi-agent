@@ -2,6 +2,7 @@ import { auth } from "../../auth";
 import Image from "next/image";
 import { SignInButton } from "./SignInButton";
 import { SignOutButton } from "./SignOutButton";
+import { HeaderMenuButton } from "./HeaderMenuButton";
 
 export async function Header() {
   const session = await auth();
@@ -10,11 +11,7 @@ export async function Header() {
     <div className="bg-white border-b border-gray-200 p-4 h-16">
       <div className="flex items-center justify-between">
         <div className="flex items-center">
-          <button className="p-2 hover:bg-gray-100 rounded-lg transition-colors mr-3 md:hidden" aria-label="メニューを開く">
-            <svg className="w-6 h-6 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
-            </svg>
-          </button>
+          <HeaderMenuButton />
           <h1 className="text-lg md:text-xl font-semibold text-gray-900">One to Multi Agent</h1>
         </div>
         

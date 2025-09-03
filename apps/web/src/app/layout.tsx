@@ -3,6 +3,7 @@ import { Geist, Geist_Mono } from "next/font/google";
 import Script from "next/script";
 import { auth } from "../../auth";
 import { HistoryProviderWrapper } from "../components/HistoryProviderWrapper";
+import { SidebarProvider } from "../contexts/SidebarContext";
 import { Header } from "../components/Header";
 import "./globals.css";
 
@@ -34,10 +35,12 @@ export default async function RootLayout({
         className={`${geistSans.variable} ${geistMono.variable} antialiased`}
       >
         <Script src="/runtime-config.js" strategy="beforeInteractive" />
-        <HistoryProviderWrapper userId={session?.user?.id}>
-          <Header />
-          {children}
-        </HistoryProviderWrapper>
+        <SidebarProvider>
+          <HistoryProviderWrapper userId={session?.user?.id}>
+            <Header />
+            {children}
+          </HistoryProviderWrapper>
+        </SidebarProvider>
       </body>
     </html>
   );

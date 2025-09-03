@@ -7,6 +7,7 @@ import { SourceForm } from '../components/SourceForm';
 import { ResultsDisplay } from '../components/ResultsDisplay';
 import { Sidebar } from '../components/Sidebar';
 import { ThreadView } from '../components/ThreadView';
+import { useSidebar } from '../contexts/SidebarContext';
 
 interface HomeContentProps {
   userId?: string;
@@ -16,7 +17,7 @@ export default function HomeContent({ userId }: HomeContentProps) {
   const router = useRouter();
   const searchParams = useSearchParams();
   const [selectedThreadId, setSelectedThreadId] = useState<string | null>(null);
-  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+  const { isSidebarOpen, closeSidebar } = useSidebar();
 
   useEffect(() => {
     const threadId = searchParams.get('thread');
@@ -45,7 +46,7 @@ export default function HomeContent({ userId }: HomeContentProps) {
     setSelectedThreadId(null);
     resetForm();
     router.push('/');
-    setIsSidebarOpen(false); // Close mobile sidebar
+    closeSidebar(); // Close mobile sidebar
   };
 
   const handleThreadSelect = (threadId: string | null) => {
@@ -55,11 +56,7 @@ export default function HomeContent({ userId }: HomeContentProps) {
     } else {
       router.push('/');
     }
-    setIsSidebarOpen(false); // Close mobile sidebar
-  };
-
-  const toggleSidebar = () => {
-    setIsSidebarOpen(!isSidebarOpen);
+    closeSidebar(); // Close mobile sidebar
   };
 
   return (
@@ -70,7 +67,7 @@ export default function HomeContent({ userId }: HomeContentProps) {
         onThreadSelect={handleThreadSelect}
         onNewChat={handleNewChat}
         isOpen={isSidebarOpen}
-        onClose={() => setIsSidebarOpen(false)}
+        onClose={closeSidebar}
       />
       
       {/* Main Content */}
