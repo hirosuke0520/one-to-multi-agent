@@ -45,9 +45,10 @@ interface ContentMetadata {
 
 interface ThreadViewProps {
   threadId: string;
+  userId?: string;
 }
 
-export function ThreadView({ threadId }: ThreadViewProps) {
+export function ThreadView({ threadId, userId }: ThreadViewProps) {
   const [thread, setThread] = useState<ContentMetadata | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -58,7 +59,11 @@ export function ThreadView({ threadId }: ThreadViewProps) {
     setError(null);
     
     try {
-      const response = await fetch(`${getApiUrl()}/history`, {
+      const url = userId 
+        ? `${getApiUrl()}/history?userId=${encodeURIComponent(userId)}`
+        : `${getApiUrl()}/history`;
+        
+      const response = await fetch(url, {
         method: 'GET',
         headers: {
           'Content-Type': 'application/json',
@@ -106,7 +111,7 @@ export function ThreadView({ threadId }: ThreadViewProps) {
   useEffect(() => {
     fetchThread();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [threadId]);
+  }, [threadId, userId]);
 
   const formatDate = (dateString: string) => {
     return new Date(dateString).toLocaleString('ja-JP');

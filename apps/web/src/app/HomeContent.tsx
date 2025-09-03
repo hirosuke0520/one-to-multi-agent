@@ -76,7 +76,7 @@ export default function HomeContent({ userId }: HomeContentProps) {
       {/* Main Content */}
       <div className="flex-1 flex flex-col md:ml-0">
         {selectedThreadId ? (
-          <ThreadView threadId={selectedThreadId} />
+          <ThreadView threadId={selectedThreadId} userId={userId} />
         ) : (
           <div className="flex-1 overflow-y-auto">
             <div className="max-w-4xl mx-auto px-4 md:px-6 py-4 md:py-8">
