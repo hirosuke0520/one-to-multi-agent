@@ -46,13 +46,17 @@ export function HistoryProvider({ children, userId }: HistoryProviderProps) {
   const fetchHistory = useCallback(async () => {
     if (isLoading) return;
     
+    // ログインしていない場合は履歴を取得しない
+    if (!userId) {
+      setHistory([]);
+      return;
+    }
+    
     setIsLoading(true);
     setError(null);
 
     try {
-      const url = userId 
-        ? `${getApiUrl()}/history?userId=${encodeURIComponent(userId)}`
-        : `${getApiUrl()}/history`;
+      const url = `${getApiUrl()}/history?userId=${encodeURIComponent(userId)}`;
       
       const response = await fetch(url, {
         method: 'GET',
@@ -76,14 +80,18 @@ export function HistoryProvider({ children, userId }: HistoryProviderProps) {
   }, [isLoading, userId]);
 
   const refreshHistory = useCallback(async () => {
+    // ログインしていない場合は履歴を取得しない
+    if (!userId) {
+      setHistory([]);
+      return;
+    }
+    
     // Force refresh without checking isLoading
     setIsLoading(true);
     setError(null);
 
     try {
-      const url = userId 
-        ? `${getApiUrl()}/history?userId=${encodeURIComponent(userId)}`
-        : `${getApiUrl()}/history`;
+      const url = `${getApiUrl()}/history?userId=${encodeURIComponent(userId)}`;
       
       const response = await fetch(url, {
         method: 'GET',

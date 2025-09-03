@@ -17,13 +17,11 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
     }),
   ],
   callbacks: {
-    async signIn({ user, account, profile }) {
-      // Allow OAuth sign in without blocking
+    async signIn({ account, profile }) {
       if (account?.provider === "google") {
-        // Fire and forget - don't block authentication
-        // Use internal Docker network URL for server-side calls
         const apiUrl = process.env.INTERNAL_API_URL || "http://api:8787";
-        fetch(`${apiUrl}/api/auth/signin`, {
+
+        fetch(`${apiUrl}/auth/signin`, {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
