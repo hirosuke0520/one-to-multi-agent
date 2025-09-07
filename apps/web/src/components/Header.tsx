@@ -1,4 +1,4 @@
-import { auth } from "../../auth";
+import { auth } from "@/auth";
 import Image from "next/image";
 import { SignInButton } from "./SignInButton";
 import { SignOutButton } from "./SignOutButton";
@@ -12,9 +12,11 @@ export async function Header() {
       <div className="flex items-center justify-between">
         <div className="flex items-center">
           <HeaderMenuButton />
-          <h1 className="text-lg md:text-xl font-semibold text-gray-900">One to Multi Agent</h1>
+          <h1 className="text-lg md:text-xl font-semibold text-gray-900">
+            One to Multi Agent
+          </h1>
         </div>
-        
+
         {session?.user ? (
           <div className="flex items-center gap-3">
             {session.user.image && (

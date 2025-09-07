@@ -11,9 +11,10 @@ import { useSidebar } from '../contexts/SidebarContext';
 
 interface HomeContentProps {
   userId?: string;
+  isAuthenticated?: boolean;
 }
 
-export default function HomeContent({ userId }: HomeContentProps) {
+export default function HomeContent({ userId, isAuthenticated }: HomeContentProps) {
   const router = useRouter();
   const searchParams = useSearchParams();
   const [selectedThreadId, setSelectedThreadId] = useState<string | null>(null);
@@ -68,6 +69,7 @@ export default function HomeContent({ userId }: HomeContentProps) {
         onNewChat={handleNewChat}
         isOpen={isSidebarOpen}
         onClose={closeSidebar}
+        isAuthenticated={isAuthenticated}
       />
       
       {/* Main Content */}

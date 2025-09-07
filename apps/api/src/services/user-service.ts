@@ -1,4 +1,5 @@
 import { Pool } from 'pg';
+import { pool as defaultPool } from '../db/pool.js';
 
 export interface User {
   id: string;
@@ -14,8 +15,8 @@ export interface User {
 export class UserService {
   private pool: Pool;
 
-  constructor(pool: Pool) {
-    this.pool = pool;
+  constructor(pool?: Pool) {
+    this.pool = pool || defaultPool;
   }
 
   /**
@@ -134,5 +135,16 @@ export class UserService {
       [userId]
     );
     return (result.rowCount ?? 0) > 0;
+  }
+
+  /**
+   * ユーザーが存在するか確認
+   */
+  async userExists(userId: string): Promise<boolean> {
+    const result = await this.pool.query(
+      'SELECT 1 FROM users WHERE id = $1',
+      [userId]
+    );
+    return result.rows.length > 0;
   }
 }

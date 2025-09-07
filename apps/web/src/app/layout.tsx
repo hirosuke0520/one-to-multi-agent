@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import Script from "next/script";
-import { auth } from "../../auth";
+import { auth } from "@/auth";
 import { HistoryProviderWrapper } from "../components/HistoryProviderWrapper";
 import { SidebarProvider } from "../contexts/SidebarContext";
 import { Header } from "../components/Header";
@@ -36,7 +36,10 @@ export default async function RootLayout({
       >
         <Script src="/runtime-config.js" strategy="beforeInteractive" />
         <SidebarProvider>
-          <HistoryProviderWrapper userId={session?.user?.id}>
+          <HistoryProviderWrapper
+            userId={session?.user?.id}
+            isAuthenticated={!!session}
+          >
             <Header />
             {children}
           </HistoryProviderWrapper>

@@ -36,9 +36,10 @@ const HistoryContext = createContext<HistoryContextType | undefined>(undefined);
 interface HistoryProviderProps {
   children: ReactNode;
   userId?: string;
+  isAuthenticated?: boolean;
 }
 
-export function HistoryProvider({ children, userId }: HistoryProviderProps) {
+export function HistoryProvider({ children, userId, isAuthenticated }: HistoryProviderProps) {
   const [history, setHistory] = useState<ContentMetadata[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
