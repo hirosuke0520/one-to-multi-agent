@@ -37,7 +37,7 @@ export interface JobResults {
   platformResults: PlatformResult[];
 }
 
-export const useContentGenerator = () => {
+export const useContentGenerator = (userId?: string) => {
   const [sourceType, setSourceType] = useState<'text' | 'audio' | 'video'>('text');
   const [content, setContent] = useState('');
   const [file, setFile] = useState<File | null>(null);
@@ -63,7 +63,12 @@ export const useContentGenerator = () => {
         response = await fetch(`${apiUrl}/orchestrator/process`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ sourceType, content, targets }),
+          body: JSON.stringify({ 
+            sourceType, 
+            content, 
+            targets,
+            userId
+          }),
         });
       } else {
         if (!file) throw new Error('File not selected');
@@ -71,6 +76,9 @@ export const useContentGenerator = () => {
         formData.append('file', file);
         formData.append('sourceType', sourceType);
         formData.append('targets', JSON.stringify(targets));
+        if (userId) {
+          formData.append('userId', userId);
+        }
         response = await fetch(`${apiUrl}/orchestrator/process`, {
           method: 'POST',
           body: formData,

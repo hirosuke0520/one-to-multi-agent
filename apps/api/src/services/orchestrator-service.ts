@@ -18,6 +18,7 @@ export interface ProcessJobRequest {
   fileName?: string;
   mimeType?: string;
   targets: string[];
+  userId?: string;
   profile?: {
     tone?: string;
     audience?: string;
@@ -33,6 +34,7 @@ export interface Job {
   status: "pending" | "processing" | "completed" | "failed";
   createdAt: Date;
   updatedAt: Date;
+  userId?: string;
   error?: string;
   storedFile?: StoredFile; // Reference to stored file in GCS
 }
@@ -120,6 +122,7 @@ export class OrchestratorService {
       status: "pending",
       createdAt: new Date(),
       updatedAt: new Date(),
+      userId: request.userId,
       storedFile,
     };
 
@@ -331,6 +334,7 @@ export class OrchestratorService {
       const metadata: ContentMetadata = {
         id: this.metadataService.generateId(),
         sourceType: request.sourceType,
+        userId: request.userId,
         createdAt: new Date().toISOString(),
         generatedContent: [],
       };

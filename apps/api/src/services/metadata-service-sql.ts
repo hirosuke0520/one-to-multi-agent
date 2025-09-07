@@ -205,20 +205,21 @@ export class MetadataServiceSQL {
 
   async listMetadata(userId?: string, limit = 20): Promise<ContentMetadata[]> {
     try {
+      // userIdが指定されていない場合は空の配列を返す（セキュリティ対策）
+      if (!userId) {
+        return [];
+      }
+      
       let query = `
         SELECT cm.*, 
                pd.preview_type, pd.duration as preview_duration, pd.waveform_data,
                pd.thumbnail_base64, pd.video_width, pd.video_height, pd.transcript_preview
         FROM content_metadata cm
         LEFT JOIN preview_data pd ON cm.id = pd.content_id
+        WHERE cm.user_id = $1
       `;
       
-      const params: any[] = [];
-      
-      if (userId) {
-        query += ` WHERE cm.user_id = $1`;
-        params.push(userId);
-      }
+      const params: any[] = [userId];
       
       query += ` ORDER BY cm.created_at DESC LIMIT $${params.length + 1}`;
       params.push(limit);

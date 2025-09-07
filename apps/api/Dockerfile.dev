@@ -7,17 +7,6 @@ RUN apk add --no-cache ffmpeg
 # Set working directory
 WORKDIR /app
 
-# Copy root package files for workspace
-COPY package*.json ./
-COPY apps/api/package*.json ./apps/api/
-COPY packages/core/package*.json ./packages/core/
-
-# Install dependencies (will install workspace dependencies)
-RUN npm ci
-
-# Copy application files
-COPY . .
-
 # Create data and temp directories
 RUN mkdir -p /app/apps/api/data /app/apps/api/temp /app/apps/api/storage
 
