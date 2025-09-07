@@ -1,0 +1,594 @@
+// types/conversation.ts
+export interface ConversationMessage {
+  role: 'user' | 'assistant' | 'system';
+  content: string;
+  timestamp: Date;
+  metadata?: {
+    promptAdjustment?: string;
+    mediaType?: string;
+    generatedContent?: string;
+  };
+}
+
+export interface UserPromptConfig {
+  userId: string;
+  basePrompt: string;
+  mediaConfigs: MediaPromptConfig[];
+  conversationHistory: ConversationMessage[];
+}
+
+export interface MediaPromptConfig {
+  mediaType: 'twitter' | 'instagram' | 'youtube' | 'blog' | 'tiktok';
+  basePrompt: string;
+  constraints?: {
+    maxLength?: number;
+    tone?: string;
+    keywords?: string[];
+  };
+}
+
+export interface PromptAdjustmentRequest {
+  userId: string;
+  mediaType: string;
+  adjustmentPrompt: string;
+  conversationContext?: ConversationMessage[];
+}
+
+// lib/gemini-service.ts
+import { GoogleGenerativeAI, GenerativeModel, ChatSession } from '@google/generative-ai';
+
+export class GeminiConversationService {
+  private genAI: GoogleGenerativeAI;
+  private model: GenerativeModel;
+  private sessions: Map<string, ChatSession>;
+
+  constructor(apiKey: string) {
+    this.genAI = new GoogleGenerativeAI(apiKey);
+    this.model = this.genAI.getGenerativeModel({ 
+      model: "gemini-1.5-flash",
+      generationConfig: {
+        temperature: 0.7,
+        topK: 40,
+        topP: 0.95,
+        maxOutputTokens: 8192,
+      },
+    });
+    this.sessions = new Map();
+  }
+
+  /**
+   * ユーザーセッションの初期化または取得
+   */
+  private getOrCreateSession(userId: string, systemPrompt?: string): ChatSession {
+    const sessionKey = userId;
+    
+    if (!this.sessions.has(sessionKey)) {
+      const chat = this.model.startChat({
+        history: systemPrompt ? [
+          {
+            role: 'user',
+            parts: [{ text: `System: ${systemPrompt}` }],
+          },
+          {
+            role: 'model',
+            parts: [{ text: 'はい、理解しました。コンテンツ生成とプロンプト調整をサポートします。' }],
+          },
+        ] : [],
+      });
+      this.sessions.set(sessionKey, chat);
+    }
+    
+    return this.sessions.get(sessionKey)!;
+  }
+
+  /**
+   * プロンプト調整の会話処理
+   */
+  async adjustPromptWithConversation(
+    userId: string,
+    userMessage: string,
+    currentPrompt: string,
+    mediaType: string
+  ): Promise<{
+    adjustedPrompt: string;
+    assistantResponse: string;
+    suggestion?: string;
+  }> {
+    const systemPrompt = `
+あなたはコンテンツ生成AIのプロンプト調整アシスタントです。
+現在のプロンプト: "${currentPrompt}"
+対象媒体: ${mediaType}
+
+ユーザーの要望に基づいて、プロンプトを改善・調整してください。
+以下の形式で応答してください：
+1. 調整後のプロンプト
+2. 調整内容の説明
+3. 追加の提案（あれば）
+    `;
+
+    const session = this.getOrCreateSession(userId, systemPrompt);
+    
+    const prompt = `
+ユーザーの要望: ${userMessage}
+
+現在のプロンプトを改善してください。
+【出力形式】
+ADJUSTED_PROMPT: [調整後のプロンプト]
+EXPLANATION: [調整内容の説明]
+SUGGESTION: [追加の提案]
+    `;
+
+    const result = await session.sendMessage(prompt);
+    const response = result.response.text();
+    
+    // レスポンスをパース
+    const adjustedPrompt = this.extractSection(response, 'ADJUSTED_PROMPT');
+    const explanation = this.extractSection(response, 'EXPLANATION');
+    const suggestion = this.extractSection(response, 'SUGGESTION');
+
+    return {
+      adjustedPrompt: adjustedPrompt || currentPrompt,
+      assistantResponse: explanation || response,
+      suggestion: suggestion,
+    };
+  }
+
+  /**
+   * 生成結果の調整会話
+   */
+  async refineGeneratedContent(
+    userId: string,
+    userFeedback: string,
+    generatedContent: string,
+    mediaType: string
+  ): Promise<{
+    refinedContent: string;
+    assistantResponse: string;
+    promptAdjustment?: string;
+  }> {
+    const systemPrompt = `
+あなたはコンテンツ改善アシスタントです。
+生成されたコンテンツをユーザーのフィードバックに基づいて改善します。
+対象媒体: ${mediaType}
+    `;
+
+    const session = this.getOrCreateSession(`${userId}_refine`, systemPrompt);
+    
+    const prompt = `
+【生成済みコンテンツ】
+${generatedContent}
+
+【ユーザーのフィードバック】
+${userFeedback}
+
+上記のフィードバックに基づいてコンテンツを改善してください。
+【出力形式】
+REFINED_CONTENT: [改善後のコンテンツ]
+CHANGES_MADE: [変更内容の説明]
+PROMPT_SUGGESTION: [今後のプロンプト改善案]
+    `;
+
+    const result = await session.sendMessage(prompt);
+    const response = result.response.text();
+    
+    const refinedContent = this.extractSection(response, 'REFINED_CONTENT');
+    const changesMade = this.extractSection(response, 'CHANGES_MADE');
+    const promptSuggestion = this.extractSection(response, 'PROMPT_SUGGESTION');
+
+    return {
+      refinedContent: refinedContent || generatedContent,
+      assistantResponse: changesMade || response,
+      promptAdjustment: promptSuggestion,
+    };
+  }
+
+  /**
+   * インタラクティブなプロンプト構築
+   */
+  async buildPromptInteractively(
+    userId: string,
+    conversationHistory: ConversationMessage[],
+    userInput: string
+  ): Promise<{
+    response: string;
+    currentPrompt?: string;
+    isComplete: boolean;
+  }> {
+    const systemPrompt = `
+あなたはプロンプト構築アシスタントです。
+ユーザーとの対話を通じて、効果的なプロンプトを構築します。
+必要な情報を質問し、段階的にプロンプトを改善してください。
+    `;
+
+    const session = this.getOrCreateSession(`${userId}_builder`, systemPrompt);
+    
+    // 会話履歴を追加
+    const context = conversationHistory
+      .map(msg => `${msg.role}: ${msg.content}`)
+      .join('\n');
+
+    const prompt = `
+【これまでの会話】
+${context}
+
+【ユーザーの入力】
+${userInput}
+
+プロンプト構築を続けてください。
+必要に応じて質問をし、現在のプロンプト案を提示してください。
+【出力形式】
+RESPONSE: [アシスタントの応答]
+CURRENT_PROMPT: [現在のプロンプト案（あれば）]
+IS_COMPLETE: [true/false - プロンプトが完成したか]
+    `;
+
+    const result = await session.sendMessage(prompt);
+    const response = result.response.text();
+    
+    return {
+      response: this.extractSection(response, 'RESPONSE') || response,
+      currentPrompt: this.extractSection(response, 'CURRENT_PROMPT'),
+      isComplete: this.extractSection(response, 'IS_COMPLETE') === 'true',
+    };
+  }
+
+  /**
+   * プロンプトテンプレートの提案
+   */
+  async suggestPromptTemplates(
+    mediaType: string,
+    contentType: string,
+    requirements?: string
+  ): Promise<string[]> {
+    const prompt = `
+媒体: ${mediaType}
+コンテンツタイプ: ${contentType}
+要件: ${requirements || 'なし'}
+
+上記の条件に適したプロンプトテンプレートを3つ提案してください。
+各テンプレートは具体的で実用的なものにしてください。
+
+【出力形式】
+TEMPLATE_1: [テンプレート1]
+TEMPLATE_2: [テンプレート2]
+TEMPLATE_3: [テンプレート3]
+    `;
+
+    const result = await this.model.generateContent(prompt);
+    const response = result.response.text();
+    
+    return [
+      this.extractSection(response, 'TEMPLATE_1'),
+      this.extractSection(response, 'TEMPLATE_2'),
+      this.extractSection(response, 'TEMPLATE_3'),
+    ].filter(Boolean) as string[];
+  }
+
+  /**
+   * レスポンスから特定セクションを抽出
+   */
+  private extractSection(text: string, sectionName: string): string | undefined {
+    const regex = new RegExp(`${sectionName}:\\s*(.+?)(?=\\n[A-Z_]+:|$)`, 's');
+    const match = text.match(regex);
+    return match ? match[1].trim() : undefined;
+  }
+
+  /**
+   * セッションをクリア
+   */
+  clearSession(userId: string): void {
+    this.sessions.delete(userId);
+    this.sessions.delete(`${userId}_refine`);
+    this.sessions.delete(`${userId}_builder`);
+  }
+}
+
+// api/conversation-controller.ts
+import { Request, Response } from 'express';
+import { GeminiConversationService } from '../lib/gemini-service';
+import { db } from '../lib/database';
+
+export class ConversationController {
+  private geminiService: GeminiConversationService;
+
+  constructor() {
+    this.geminiService = new GeminiConversationService(process.env.GOOGLE_API_KEY!);
+  }
+
+  /**
+   * プロンプト調整API
+   */
+  async adjustPrompt(req: Request, res: Response) {
+    try {
+      const { userId, mediaType, message, currentPrompt } = req.body;
+
+      // DBから現在のプロンプトを取得
+      const userPrompt = currentPrompt || await this.getUserPrompt(userId, mediaType);
+
+      // Geminiでプロンプト調整
+      const result = await this.geminiService.adjustPromptWithConversation(
+        userId,
+        message,
+        userPrompt,
+        mediaType
+      );
+
+      // 調整後のプロンプトを一時保存（確定前）
+      await this.saveTempPrompt(userId, mediaType, result.adjustedPrompt);
+
+      // 会話履歴を保存
+      await this.saveConversation(userId, {
+        role: 'user',
+        content: message,
+        timestamp: new Date(),
+        metadata: { mediaType }
+      });
+
+      await this.saveConversation(userId, {
+        role: 'assistant',
+        content: result.assistantResponse,
+        timestamp: new Date(),
+        metadata: { 
+          promptAdjustment: result.adjustedPrompt,
+          mediaType 
+        }
+      });
+
+      res.json({
+        success: true,
+        adjustedPrompt: result.adjustedPrompt,
+        response: result.assistantResponse,
+        suggestion: result.suggestion
+      });
+    } catch (error) {
+      console.error('Prompt adjustment error:', error);
+      res.status(500).json({ 
+        success: false, 
+        error: 'プロンプト調整中にエラーが発生しました' 
+      });
+    }
+  }
+
+  /**
+   * コンテンツ改善API
+   */
+  async refineContent(req: Request, res: Response) {
+    try {
+      const { userId, mediaType, feedback, content } = req.body;
+
+      const result = await this.geminiService.refineGeneratedContent(
+        userId,
+        feedback,
+        content,
+        mediaType
+      );
+
+      // 改善履歴を保存
+      await this.saveRefinementHistory(userId, {
+        originalContent: content,
+        refinedContent: result.refinedContent,
+        feedback,
+        mediaType,
+        timestamp: new Date()
+      });
+
+      res.json({
+        success: true,
+        refinedContent: result.refinedContent,
+        response: result.assistantResponse,
+        promptSuggestion: result.promptAdjustment
+      });
+    } catch (error) {
+      console.error('Content refinement error:', error);
+      res.status(500).json({ 
+        success: false, 
+        error: 'コンテンツ改善中にエラーが発生しました' 
+      });
+    }
+  }
+
+  /**
+   * インタラクティブプロンプト構築API
+   */
+  async buildPrompt(req: Request, res: Response) {
+    try {
+      const { userId, message } = req.body;
+
+      // 会話履歴を取得
+      const history = await this.getConversationHistory(userId);
+
+      const result = await this.geminiService.buildPromptInteractively(
+        userId,
+        history,
+        message
+      );
+
+      // 会話を保存
+      await this.saveConversation(userId, {
+        role: 'user',
+        content: message,
+        timestamp: new Date()
+      });
+
+      await this.saveConversation(userId, {
+        role: 'assistant',
+        content: result.response,
+        timestamp: new Date(),
+        metadata: { 
+          currentPrompt: result.currentPrompt,
+          isComplete: result.isComplete 
+        }
+      });
+
+      res.json({
+        success: true,
+        response: result.response,
+        currentPrompt: result.currentPrompt,
+        isComplete: result.isComplete
+      });
+    } catch (error) {
+      console.error('Prompt building error:', error);
+      res.status(500).json({ 
+        success: false, 
+        error: 'プロンプト構築中にエラーが発生しました' 
+      });
+    }
+  }
+
+  /**
+   * プロンプトテンプレート提案API
+   */
+  async suggestTemplates(req: Request, res: Response) {
+    try {
+      const { mediaType, contentType, requirements } = req.body;
+
+      const templates = await this.geminiService.suggestPromptTemplates(
+        mediaType,
+        contentType,
+        requirements
+      );
+
+      res.json({
+        success: true,
+        templates
+      });
+    } catch (error) {
+      console.error('Template suggestion error:', error);
+      res.status(500).json({ 
+        success: false, 
+        error: 'テンプレート提案中にエラーが発生しました' 
+      });
+    }
+  }
+
+  // Database helper methods
+  private async getUserPrompt(userId: string, mediaType: string): Promise<string> {
+    const result = await db.query(
+      'SELECT prompt FROM user_prompts WHERE user_id = $1 AND media_type = $2',
+      [userId, mediaType]
+    );
+    return result.rows[0]?.prompt || '';
+  }
+
+  private async saveTempPrompt(userId: string, mediaType: string, prompt: string): Promise<void> {
+    await db.query(
+      `INSERT INTO temp_prompts (user_id, media_type, prompt, created_at) 
+       VALUES ($1, $2, $3, NOW())
+       ON CONFLICT (user_id, media_type) 
+       DO UPDATE SET prompt = $3, updated_at = NOW()`,
+      [userId, mediaType, prompt]
+    );
+  }
+
+  private async saveConversation(userId: string, message: ConversationMessage): Promise<void> {
+    await db.query(
+      `INSERT INTO conversation_history (user_id, role, content, metadata, timestamp)
+       VALUES ($1, $2, $3, $4, $5)`,
+      [userId, message.role, message.content, JSON.stringify(message.metadata), message.timestamp]
+    );
+  }
+
+  private async getConversationHistory(userId: string): Promise<ConversationMessage[]> {
+    const result = await db.query(
+      `SELECT role, content, metadata, timestamp 
+       FROM conversation_history 
+       WHERE user_id = $1 
+       ORDER BY timestamp ASC 
+       LIMIT 20`,
+      [userId]
+    );
+    return result.rows.map(row => ({
+      role: row.role,
+      content: row.content,
+      timestamp: row.timestamp,
+      metadata: row.metadata
+    }));
+  }
+
+  private async saveRefinementHistory(userId: string, refinement: any): Promise<void> {
+    await db.query(
+      `INSERT INTO refinement_history 
+       (user_id, original_content, refined_content, feedback, media_type, timestamp)
+       VALUES ($1, $2, $3, $4, $5, $6)`,
+      [
+        userId,
+        refinement.originalContent,
+        refinement.refinedContent,
+        refinement.feedback,
+        refinement.mediaType,
+        refinement.timestamp
+      ]
+    );
+  }
+}
+
+// database/schema.sql
+CREATE TABLE IF NOT EXISTS user_prompts (
+  id SERIAL PRIMARY KEY,
+  user_id VARCHAR(255) NOT NULL,
+  media_type VARCHAR(50) NOT NULL,
+  prompt TEXT NOT NULL,
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  UNIQUE(user_id, media_type)
+);
+
+CREATE TABLE IF NOT EXISTS temp_prompts (
+  id SERIAL PRIMARY KEY,
+  user_id VARCHAR(255) NOT NULL,
+  media_type VARCHAR(50) NOT NULL,
+  prompt TEXT NOT NULL,
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  UNIQUE(user_id, media_type)
+);
+
+CREATE TABLE IF NOT EXISTS conversation_history (
+  id SERIAL PRIMARY KEY,
+  user_id VARCHAR(255) NOT NULL,
+  role VARCHAR(20) NOT NULL,
+  content TEXT NOT NULL,
+  metadata JSONB,
+  timestamp TIMESTAMP NOT NULL,
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE IF NOT EXISTS refinement_history (
+  id SERIAL PRIMARY KEY,
+  user_id VARCHAR(255) NOT NULL,
+  original_content TEXT NOT NULL,
+  refined_content TEXT NOT NULL,
+  feedback TEXT,
+  media_type VARCHAR(50),
+  timestamp TIMESTAMP NOT NULL,
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE INDEX idx_conversation_user_timestamp ON conversation_history(user_id, timestamp);
+CREATE INDEX idx_refinement_user_timestamp ON refinement_history(user_id, timestamp);
+
+// routes/api.ts
+import express from 'express';
+import { ConversationController } from '../controllers/conversation-controller';
+
+const router = express.Router();
+const conversationController = new ConversationController();
+
+// 会話・プロンプト調整エンドポイント
+router.post('/conversation/adjust-prompt', (req, res) => 
+  conversationController.adjustPrompt(req, res)
+);
+
+router.post('/conversation/refine-content', (req, res) => 
+  conversationController.refineContent(req, res)
+);
+
+router.post('/conversation/build-prompt', (req, res) => 
+  conversationController.buildPrompt(req, res)
+);
+
+router.post('/conversation/suggest-templates', (req, res) => 
+  conversationController.suggestTemplates(req, res)
+);
+
+export default router;
