@@ -1,14 +1,16 @@
 -- ユーザー設定とプロンプト管理、画像生成機能の追加
 
--- ユーザー設定テーブル（キャラクター設定と画像保存）
+-- ユーザー設定テーブル（媒体別キャラクター設定と画像保存）
 CREATE TABLE IF NOT EXISTS user_settings (
-    user_id UUID PRIMARY KEY REFERENCES users(id) ON DELETE CASCADE,
-    character_prompt TEXT, -- キャラクター全体のプロンプト
+    user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    platform VARCHAR(50) NOT NULL CHECK (platform IN ('twitter', 'instagram', 'tiktok', 'threads', 'youtube', 'blog')),
+    character_prompt TEXT, -- 媒体別キャラクタープロンプト
     character_image_path TEXT, -- GCSに保存されたキャラクター元画像のパス
     character_image_name TEXT, -- オリジナルファイル名
     character_image_size BIGINT, -- ファイルサイズ
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    PRIMARY KEY (user_id, platform)
 );
 
 -- インデックス作成
@@ -42,26 +44,51 @@ CREATE TRIGGER IF NOT EXISTS update_user_settings_updated_at
     BEFORE UPDATE ON user_settings
     FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
 
--- デフォルトのキャラクタープロンプト挿入用の関数
+-- 媒体別デフォルトキャラクタープロンプト挿入用の関数
 CREATE OR REPLACE FUNCTION ensure_user_settings(p_user_id UUID)
 RETURNS VOID AS $$
+DECLARE
+    platform_list TEXT[] := ARRAY['twitter', 'instagram', 'tiktok', 'threads', 'youtube', 'blog'];
+    platform_name TEXT;
 BEGIN
-    INSERT INTO user_settings (user_id, character_prompt)
-    VALUES (
-        p_user_id, 
-        'あなたは親しみやすく、創造性豊かなコンテンツクリエイターです。各SNSプラットフォームの特性を理解し、魅力的で engaging なコンテンツを作成してください。'
-    )
-    ON CONFLICT (user_id) DO NOTHING;
+    FOREACH platform_name IN ARRAY platform_list
+    LOOP
+        INSERT INTO user_settings (user_id, platform, character_prompt)
+        VALUES (
+            p_user_id,
+            platform_name,
+            CASE 
+                WHEN platform_name = 'twitter' THEN 'あなたは親しみやすく、Twitter向けの簡潔で魅力的なコンテンツクリエイターです。'
+                WHEN platform_name = 'instagram' THEN 'あなたは親しみやすく、Instagram向けの視覚的で魅力的なコンテンツクリエイターです。'
+                WHEN platform_name = 'tiktok' THEN 'あなたは親しみやすく、TikTok向けのトレンド感あふれるコンテンツクリエイターです。'
+                WHEN platform_name = 'threads' THEN 'あなたは親しみやすく、Threads向けのカジュアルなコンテンツクリエイターです。'
+                WHEN platform_name = 'youtube' THEN 'あなたは親しみやすく、YouTube向けの詳細で魅力的なコンテンツクリエイターです。'
+                WHEN platform_name = 'blog' THEN 'あなたは親しみやすく、ブログ向けの構造的で読みやすいコンテンツクリエイターです。'
+                ELSE 'あなたは親しみやすく、創造性豊かなコンテンツクリエイターです。'
+            END
+        )
+        ON CONFLICT (user_id, platform) DO NOTHING;
+    END LOOP;
 END;
 $$ LANGUAGE plpgsql;
 
--- 既存のユーザーに対してデフォルト設定を追加
-INSERT INTO user_settings (user_id, character_prompt)
+-- 既存のユーザーに対して媒体別デフォルト設定を追加
+INSERT INTO user_settings (user_id, platform, character_prompt)
 SELECT 
-    id, 
-    'あなたは親しみやすく、創造性豊かなコンテンツクリエイターです。各SNSプラットフォームの特性を理解し、魅力的で engaging なコンテンツを作成してください。'
-FROM users
-ON CONFLICT (user_id) DO NOTHING;
+    u.id,
+    p.platform,
+    CASE 
+        WHEN p.platform = 'twitter' THEN 'あなたは親しみやすく、Twitter向けの簡潔で魅力的なコンテンツクリエイターです。'
+        WHEN p.platform = 'instagram' THEN 'あなたは親しみやすく、Instagram向けの視覚的で魅力的なコンテンツクリエイターです。'
+        WHEN p.platform = 'tiktok' THEN 'あなたは親しみやすく、TikTok向けのトレンド感あふれるコンテンツクリエイターです。'
+        WHEN p.platform = 'threads' THEN 'あなたは親しみやすく、Threads向けのカジュアルなコンテンツクリエイターです。'
+        WHEN p.platform = 'youtube' THEN 'あなたは親しみやすく、YouTube向けの詳細で魅力的なコンテンツクリエイターです。'
+        WHEN p.platform = 'blog' THEN 'あなたは親しみやすく、ブログ向けの構造的で読みやすいコンテンツクリエイターです。'
+        ELSE 'あなたは親しみやすく、創造性豊かなコンテンツクリエイターです。'
+    END
+FROM users u
+CROSS JOIN (VALUES ('twitter'), ('instagram'), ('tiktok'), ('threads'), ('youtube'), ('blog')) AS p(platform)
+ON CONFLICT (user_id, platform) DO NOTHING;
 
 -- プラットフォーム別のデフォルトプロンプト確認・挿入
 INSERT INTO user_prompts (user_id, platform, prompt)

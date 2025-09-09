@@ -120,6 +120,17 @@ erDiagram
         TIMESTAMP last_login_at
     }
     
+    user_settings {
+        UUID user_id PK,FK
+        VARCHAR platform PK
+        TEXT character_prompt
+        TEXT character_image_path
+        TEXT character_image_name
+        BIGINT character_image_size
+        TIMESTAMP created_at
+        TIMESTAMP updated_at
+    }
+    
     sessions {
         UUID id PK
         UUID user_id FK
@@ -184,6 +195,21 @@ erDiagram
         JSONB hashtags
         TEXT script
         JSONB chapters
+        TEXT generation_prompt
+        TEXT image_generation_prompt
+        TIMESTAMP created_at
+    }
+    
+    platform_content_images {
+        UUID id PK
+        INTEGER platform_content_id FK
+        TEXT image_path
+        TEXT image_name
+        BIGINT image_size
+        INTEGER image_width
+        INTEGER image_height
+        VARCHAR aspect_ratio
+        TEXT generation_prompt
         TIMESTAMP created_at
     }
     
@@ -195,6 +221,7 @@ erDiagram
         TIMESTAMP updated_at
     }
 
+    users ||--|| user_settings : "has"
     users ||--o{ sessions : "has"
     users ||--o{ content_metadata : "creates"
     users ||--o{ content_history : "has"
@@ -204,6 +231,8 @@ erDiagram
     content_metadata ||--o{ platform_content : "generates"
     
     content_history ||--o{ platform_contents : "contains"
+    
+    platform_content ||--|| platform_content_images : "has"
             </div>
         </div>
 
@@ -213,6 +242,10 @@ erDiagram
                 <div class="table-item">
                     <div class="table-name">users</div>
                     Googleログイン情報とプロフィール
+                </div>
+                <div class="table-item">
+                    <div class="table-name">user_settings</div>
+                    媒体別キャラクター設定と画像管理 <span style="color: #28a745; font-weight: bold;">NEW</span>
                 </div>
                 <div class="table-item">
                     <div class="table-name">sessions</div>
@@ -236,7 +269,11 @@ erDiagram
                 </div>
                 <div class="table-item">
                     <div class="table-name">platform_content</div>
-                    生成されたプラットフォーム別コンテンツ
+                    生成されたプラットフォーム別コンテンツ <span style="color: #ffc107; font-weight: bold;">UPDATED</span>
+                </div>
+                <div class="table-item">
+                    <div class="table-name">platform_content_images</div>
+                    生成画像の管理・保存 <span style="color: #28a745; font-weight: bold;">NEW</span>
                 </div>
             </div>
 
@@ -256,6 +293,9 @@ erDiagram
         <div class="note">
             <h4>📝 注目ポイント</h4>
             <ul>
+                <li><strong>🆕 プロンプト管理</strong>: 3階層プロンプト（キャラクター全体/媒体別/都度設定）</li>
+                <li><strong>🆕 画像生成機能</strong>: キャラクター画像設定と生成画像管理</li>
+                <li><strong>🆕 履歴機能強化</strong>: 使用プロンプトと生成画像の履歴保存</li>
                 <li><strong>二重管理</strong>: content_metadata/platform_content と content_history/platform_contents で類似データを管理</li>
                 <li><strong>ファイル管理</strong>: content_metadataにアップロードファイル情報を保存</li>
                 <li><strong>プラットフォーム対応</strong>: Instagram, TikTok, Threads, X (Twitter), YouTube, Blog向けコンテンツ生成</li>
