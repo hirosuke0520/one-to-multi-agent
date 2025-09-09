@@ -176,6 +176,7 @@ erDiagram
         SERIAL id PK
         VARCHAR content_id FK
         VARCHAR preview_type
+        VARCHAR platform
         INTEGER duration
         JSONB waveform_data
         TEXT thumbnail_base64
@@ -265,7 +266,7 @@ erDiagram
                 </div>
                 <div class="table-item">
                     <div class="table-name">preview_data</div>
-                    音声/動画のプレビュー情報
+                    音声/動画のプレビュー情報（媒体別） <span style="color: #ffc107; font-weight: bold;">UPDATED</span>
                 </div>
                 <div class="table-item">
                     <div class="table-name">platform_content</div>

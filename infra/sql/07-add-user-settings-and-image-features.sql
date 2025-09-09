@@ -138,3 +138,10 @@ SELECT
     'ブログに最適化された、SEOを意識した構造的で読みやすい記事を作成してください。読者に価値を提供する詳細な内容にしてください。'
 FROM users u
 ON CONFLICT (user_id, platform) DO NOTHING;
+
+-- preview_dataテーブルにplatformカラムを追加（媒体別識別のため）
+ALTER TABLE preview_data 
+ADD COLUMN IF NOT EXISTS platform VARCHAR(50) CHECK (platform IN ('twitter', 'instagram', 'tiktok', 'threads', 'youtube', 'blog'));
+
+-- platformカラムのインデックス作成
+CREATE INDEX IF NOT EXISTS idx_preview_data_platform ON preview_data(platform);
