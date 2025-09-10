@@ -1,0 +1,45 @@
+{
+  "sourceText": "領域展開",
+  "platformResults": [
+    {
+      "platform": "threads",
+      "success": true,
+      "content": {
+        "id": "6a37a0ba-f3f9-48ce-bb57-1c97c15c5c1f",
+        "platform": "threads",
+        "content": {
+          "platform": "threads",
+          "text": "Threadsコンテンツの生成に失敗しました。",
+          "hashtags": [
+            "エラー"
+          ]
+        },
+        "metadata": {},
+        "notes": [
+          "Generated for threads",
+          "Platform: threads"
+        ]
+      }
+    },
+    {
+      "platform": "twitter",
+      "success": true,
+      "content": {
+        "id": "960331aa-66e2-41fb-9718-37a056cd5ae7",
+        "platform": "twitter",
+        "content": {
+          "platform": "twitter",
+          "text": "Twitterコンテンツの生成に失敗しました。",
+          "hashtags": [
+            "エラー"
+          ]
+        },
+        "metadata": {},
+        "notes": [
+          "Generated for twitter",
+          "Platform: twitter"
+        ]
+      }
+    }
+  ]
+}

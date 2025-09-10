@@ -1,0 +1,72 @@
+version: '3.8'
+
+services:
+  # PostgreSQL Database
+  db:
+    image: postgres:15-alpine
+    container_name: one-to-multi-agent-db
+    environment:
+      POSTGRES_DB: one_to_multi_agent
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./infra/sql:/docker-entrypoint-initdb.d
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+
+  # API Server (Hono)
+  api:
+    build:
+      context: .
+      dockerfile: apps/api/Dockerfile.dev
+    container_name: one-to-multi-agent-api
+    ports:
+      - "8787:8787"
+    environment:
+      NODE_ENV: development
+      DB_HOST: db
+      DB_PORT: 5432
+      DB_USER: postgres
+      DB_PASSWORD: postgres
+      DB_NAME: one_to_multi_agent
+      STORAGE_TYPE: local
+      USE_REAL_AI: false
+      PORT: 8787
+    volumes:
+      - .:/app
+      - /app/node_modules
+      - api_storage:/app/apps/api/storage
+    depends_on:
+      db:
+        condition: service_healthy
+    command: ["sh", "-c", "cd /app && npm install && cd apps/api && npm install && npm run dev"]
+
+  # Web Frontend (Next.js)
+  web:
+    build:
+      context: .
+      dockerfile: apps/web/Dockerfile.dev
+    container_name: one-to-multi-agent-web
+    ports:
+      - "3000:3000"
+    environment:
+      NODE_ENV: development
+      NEXT_PUBLIC_API_URL: http://localhost:8787
+      PORT: 3000
+    volumes:
+      - .:/app
+      - /app/node_modules
+      - /app/apps/web/node_modules
+    depends_on:
+      - api
+    command: ["sh", "-c", "cd /app && npm install && cd apps/web && npm install && npm run dev"]
+
+volumes:
+  postgres_data:
+  api_storage:

@@ -17,6 +17,7 @@ const app = new Hono();
 app.use("*", cors({
   origin: [
     "http://localhost:3000", 
+    "http://localhost:3001",
     "http://web:3000",
     "https://web-675967400701.asia-northeast1.run.app",
     "https://web-one-to-multi-agent-675967400701.asia-northeast1.run.app"
@@ -53,14 +54,14 @@ const port = parseInt(process.env.PORT || "8787");
 
 async function startServer() {
   try {
-    // Initialize database connection and tables
+    // Initialize database connection and tables (optional for testing)
     console.log('Connecting to database...');
-    await databaseService.connect();
-    
     try {
+      await databaseService.connect();
       await databaseService.initializeTables();
+      console.log('Database connected and initialized successfully');
     } catch (error) {
-      console.log('Table initialization skipped (tables may already exist):', error instanceof Error ? error.message : error);
+      console.warn('Database connection failed, running without database:', error instanceof Error ? error.message : error);
     }
     
     console.log(`Starting server on port ${port}`);
