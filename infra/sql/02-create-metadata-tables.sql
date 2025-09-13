@@ -29,25 +29,23 @@ CREATE TABLE IF NOT EXISTS preview_data (
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
--- Generated platform content
-CREATE TABLE IF NOT EXISTS platform_content (
-    id SERIAL PRIMARY KEY,
-    content_id VARCHAR(255) REFERENCES content_metadata(id) ON DELETE CASCADE,
-    platform VARCHAR(50) NOT NULL,
-    title TEXT,
-    description TEXT,
-    content TEXT,
-    hashtags JSONB, -- array of strings
-    script TEXT,
-    chapters JSONB, -- array of {title, timestamp} objects
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-);
+-- Note: platform_content table is already created in 01-init-db.sql
+-- Adding additional columns to existing platform_content table
+ALTER TABLE platform_content 
+ADD COLUMN IF NOT EXISTS content_id VARCHAR(255) REFERENCES content_metadata(id) ON DELETE CASCADE,
+ADD COLUMN IF NOT EXISTS title TEXT,
+ADD COLUMN IF NOT EXISTS description TEXT,
+ADD COLUMN IF NOT EXISTS content TEXT,
+ADD COLUMN IF NOT EXISTS hashtags JSONB,
+ADD COLUMN IF NOT EXISTS script TEXT,
+ADD COLUMN IF NOT EXISTS chapters JSONB;
 
 -- Indexes for better performance
 CREATE INDEX IF NOT EXISTS idx_content_metadata_user_id ON content_metadata(user_id);
 CREATE INDEX IF NOT EXISTS idx_content_metadata_created_at ON content_metadata(created_at DESC);
 CREATE INDEX IF NOT EXISTS idx_content_metadata_source_type ON content_metadata(source_type);
 CREATE INDEX IF NOT EXISTS idx_preview_data_content_id ON preview_data(content_id);
+-- Index on content_id column (if it exists)
 CREATE INDEX IF NOT EXISTS idx_platform_content_content_id ON platform_content(content_id);
 CREATE INDEX IF NOT EXISTS idx_platform_content_platform ON platform_content(platform);
 
