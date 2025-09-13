@@ -7,5 +7,5 @@ ADD COLUMN IF NOT EXISTS original_file_size BIGINT;
 
 -- Index for faster queries
 CREATE INDEX IF NOT EXISTS idx_content_metadata_original_file 
-ON content_metadata(content_id) 
+ON content_metadata(id) 
 WHERE original_file_path IS NOT NULL;

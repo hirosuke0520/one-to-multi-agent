@@ -66,8 +66,8 @@ services:
       - "5432:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
-      - ../sql/04-add-user-tables.sql:/docker-entrypoint-initdb.d/01-add-user-tables.sql
-      - ../sql/05-create-history-tables.sql:/docker-entrypoint-initdb.d/02-create-history-tables.sql
+      # Mount entire sql directory - files will be executed in alphabetical order
+      - ../sql:/docker-entrypoint-initdb.d
     networks:
       - app-network
     healthcheck:

@@ -24,7 +24,7 @@ ADD COLUMN IF NOT EXISTS image_generation_prompt TEXT; -- 画像生成プロン�
 -- 生成画像管理テーブル
 CREATE TABLE IF NOT EXISTS platform_content_images (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    platform_content_id INTEGER NOT NULL REFERENCES platform_content(id) ON DELETE CASCADE,
+    platform_content_id VARCHAR(255) NOT NULL REFERENCES platform_content(id) ON DELETE CASCADE,
     image_path TEXT NOT NULL, -- GCSに保存された画像のパス
     image_name TEXT, -- 生成された画像ファイル名
     image_size BIGINT, -- ファイルサイズ
@@ -40,7 +40,8 @@ CREATE INDEX IF NOT EXISTS idx_platform_content_images_content_id ON platform_co
 CREATE INDEX IF NOT EXISTS idx_platform_content_images_created_at ON platform_content_images(created_at DESC);
 
 -- user_settingsの更新時刻自動更新トリガー
-CREATE TRIGGER IF NOT EXISTS update_user_settings_updated_at 
+DROP TRIGGER IF EXISTS update_user_settings_updated_at ON user_settings;
+CREATE TRIGGER update_user_settings_updated_at 
     BEFORE UPDATE ON user_settings
     FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
 
