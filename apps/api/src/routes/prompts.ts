@@ -1,6 +1,7 @@
 import { Hono } from 'hono';
 import { authMiddleware } from '../middlewares/auth.js';
 import { PromptService, Platform } from '../services/prompt-service.js';
+import { PromptSetupService } from '../services/prompt-setup-service.js';
 
 type Variables = {
   userId: string;
@@ -10,6 +11,7 @@ type Variables = {
 
 const app = new Hono<{ Variables: Variables }>();
 const promptService = new PromptService();
+const promptSetupService = new PromptSetupService();
 
 // 全てのエンドポイントに認証を適用
 app.use('*', authMiddleware);
@@ -81,7 +83,8 @@ app.put('/:platform', async (c) => {
     }
     
     const savedPrompt = await promptService.savePrompt(userId, platform, prompt);
-    return c.json(savedPrompt);
+    const completed = await promptSetupService.evaluatePromptSetupStatus(userId);
+    return c.json({ prompt: savedPrompt, promptSetupCompleted: completed });
   } catch (error) {
     console.error('Error saving prompt:', error);
     return c.json({ error: 'Failed to save prompt' }, 500);
@@ -117,7 +120,8 @@ app.post('/batch', async (c) => {
     }
     
     const savedPrompts = await promptService.saveMultiplePrompts(userId, promptsArray);
-    return c.json({ savedPrompts });
+    const completed = await promptSetupService.evaluatePromptSetupStatus(userId);
+    return c.json({ savedPrompts, promptSetupCompleted: completed });
   } catch (error) {
     console.error('Error saving prompts:', error);
     return c.json({ error: 'Failed to save prompts' }, 500);
@@ -136,12 +140,13 @@ app.delete('/:platform', async (c) => {
     }
     
     const deleted = await promptService.deletePrompt(userId, platform);
-    
+
     if (!deleted) {
       return c.json({ error: 'Prompt not found' }, 404);
     }
-    
-    return c.json({ message: 'Prompt deleted successfully' });
+
+    const completed = await promptSetupService.evaluatePromptSetupStatus(userId);
+    return c.json({ message: 'Prompt deleted successfully', promptSetupCompleted: completed });
   } catch (error) {
     console.error('Error deleting prompt:', error);
     return c.json({ error: 'Failed to delete prompt' }, 500);
@@ -153,7 +158,8 @@ app.delete('/', async (c) => {
   try {
     const userId = c.get('userId') as string;
     await promptService.deleteAllPrompts(userId);
-    return c.json({ message: 'All prompts reset to defaults' });
+    const completed = await promptSetupService.evaluatePromptSetupStatus(userId);
+    return c.json({ message: 'All prompts reset to defaults', promptSetupCompleted: completed });
   } catch (error) {
     console.error('Error resetting prompts:', error);
     return c.json({ error: 'Failed to reset prompts' }, 500);

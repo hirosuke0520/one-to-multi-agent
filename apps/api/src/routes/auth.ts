@@ -53,7 +53,9 @@ auth.post("/signin", async (c) => {
         id: user.id,
         email: user.email,
         name: user.name,
-        picture: user.picture
+        picture: user.picture,
+        promptSetupCompleted: user.prompt_setup_completed,
+        promptSetupCompletedAt: user.prompt_setup_completed_at
       }
     });
   } catch (error) {
@@ -86,7 +88,9 @@ auth.get("/user/:userId", async (c) => {
       picture: user.picture,
       createdAt: user.created_at,
       updatedAt: user.updated_at,
-      lastLoginAt: user.last_login_at
+      lastLoginAt: user.last_login_at,
+      promptSetupCompleted: user.prompt_setup_completed,
+      promptSetupCompletedAt: user.prompt_setup_completed_at
     });
   } catch (error) {
     console.error("Error fetching user:", error);

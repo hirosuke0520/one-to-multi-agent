@@ -5,9 +5,8 @@ import { HistoryProvider } from "../contexts/HistoryContext";
 interface HistoryProviderWrapperProps {
   children: React.ReactNode;
   userId?: string;
-  isAuthenticated?: boolean;
 }
 
-export function HistoryProviderWrapper({ children, userId, isAuthenticated }: HistoryProviderWrapperProps) {
-  return <HistoryProvider userId={userId} isAuthenticated={isAuthenticated}>{children}</HistoryProvider>;
+export function HistoryProviderWrapper({ children, userId }: HistoryProviderWrapperProps) {
+  return <HistoryProvider userId={userId}>{children}</HistoryProvider>;
 }

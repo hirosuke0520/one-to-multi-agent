@@ -283,29 +283,61 @@ export function Sidebar({
                 <button
                   key={thread.id}
                   onClick={() => handleThreadClick(thread.id)}
-                  className={`w-full text-left px-4 py-3 hover:bg-gray-800 transition-colors border-l-2 cursor-pointer ${
+                  className={`w-full text-left px-4 py-4 hover:bg-gray-800 transition-colors border-l-2 cursor-pointer ${
                     selectedThreadId === thread.id
                       ? "bg-gray-800 border-blue-500"
                       : "border-transparent"
                   }`}
                 >
-                  <div className="flex justify-between items-start">
+                  <div className="space-y-2">
+                    {/* Title/Content Summary */}
                     <div className="flex-1 min-w-0">
-                      <p className="text-sm font-medium text-white truncate">
+                      <p className="text-sm font-medium text-white truncate font-inter">
                         {getThreadTitle(thread)}
                       </p>
-                      <div className="flex items-center mt-1">
-                        <span className="text-xs text-gray-400 bg-gray-700 px-2 py-0.5 rounded">
+                    </div>
+
+                    {/* Date and Time */}
+                    <div className="flex items-center justify-between">
+                      <span className="text-xs text-gray-400 font-jetbrains-mono">
+                        {new Date(thread.createdAt).toLocaleDateString('ja-JP', {
+                          month: 'short',
+                          day: 'numeric'
+                        })} {new Date(thread.createdAt).toLocaleTimeString('ja-JP', {
+                          hour: '2-digit',
+                          minute: '2-digit'
+                        })}
+                      </span>
+                    </div>
+
+                    {/* Source type and generated platforms */}
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <span className="text-xs text-gray-400 bg-gray-700 px-2 py-0.5 rounded font-inter">
                           {getSourceTypeDisplay(thread.sourceType)}
                         </span>
-                        <span className="text-xs text-gray-400 ml-2">
-                          {thread.generatedContent.length}件生成
-                        </span>
+                        <div className="flex gap-1">
+                          {thread.generatedContent.slice(0, 3).map((content, idx) => {
+                            const platformEmojis = {
+                              'threads': '🧵',
+                              'wordpress': '📝',
+                              'youtube': '📺',
+                              'twitter': '🐦',
+                              'instagram': '📸',
+                              'tiktok': '🎵'
+                            };
+                            return (
+                              <span key={idx} className="text-xs" title={content.platform}>
+                                {platformEmojis[content.platform as keyof typeof platformEmojis] || '💬'}
+                              </span>
+                            );
+                          })}
+                          {thread.generatedContent.length > 3 && (
+                            <span className="text-xs text-gray-400">+{thread.generatedContent.length - 3}</span>
+                          )}
+                        </div>
                       </div>
                     </div>
-                    <span className="text-xs text-gray-500 ml-2 flex-shrink-0">
-                      {formatDate(thread.createdAt)}
-                    </span>
                   </div>
                 </button>
               ))}
