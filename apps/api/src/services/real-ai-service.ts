@@ -154,33 +154,36 @@ ${typeof source === 'string' ? source : '添付ファイルを参照'}
   async generatePlatformContent(
     source: ContentSource,
     platform: string,
-    profile?: any
+    profile?: any,
+    tempPrompts?: { platform: string; prompt: string }[]
   ): Promise<PlatformContent> {
     switch (platform) {
       case "threads":
-        return this.generateThreadsContent(source, profile);
+        return this.generateThreadsContent(source, profile, tempPrompts);
       case "twitter":
-        return this.generateTwitterContent(source, profile);
+        return this.generateTwitterContent(source, profile, tempPrompts);
       case "youtube":
-        return this.generateYouTubeContent(source, profile);
+        return this.generateYouTubeContent(source, profile, tempPrompts);
       case "wordpress":
-        return this.generateWordPressContent(source, profile);
+        return this.generateWordPressContent(source, profile, tempPrompts);
       case "instagram":
-        return this.generateInstagramContent(source, profile);
+        return this.generateInstagramContent(source, profile, tempPrompts);
       case "tiktok":
-        return this.generateTikTokContent(source, profile);
+        return this.generateTikTokContent(source, profile, tempPrompts);
       default:
-        return this.generateThreadsContent(source, profile); // Default to Threads
+        return this.generateThreadsContent(source, profile, tempPrompts); // Default to Threads
     }
   }
 
   // === PRIVATE PLATFORM-SPECIFIC METHODS ===
 
-  private async generateThreadsContent(source: ContentSource, profile?: any): Promise<ThreadsContent> {
-    const prompt = `あなたはThreadsコミュニティマネージャーです。以下の${typeof source === 'string' ? '文章' : 'メディア'}を基に、親しみやすく会話的な投稿を作成してください。
+  private async generateThreadsContent(source: ContentSource, profile?: any, tempPrompts?: { platform: string; prompt: string }[]): Promise<ThreadsContent> {
+    const basePrompt = `あなたはThreadsコミュニティマネージャーです。以下の${typeof source === 'string' ? '文章' : 'メディア'}を基に、親しみやすく会話的な投稿を作成してください。
 
 【元コンテンツ】
-${typeof source === 'string' ? source : '添付ファイルを参照'}
+${typeof source === 'string' ? source : '添付ファイルを参照'}`;
+
+    const finalPrompt = this.buildPromptWithTempInstructions(basePrompt, 'threads', tempPrompts) + `
 
 【出力形式】
 {
@@ -209,11 +212,26 @@ JSON形式のみで回答してください。`;
     }
   }
 
-  private async generateTwitterContent(source: ContentSource, profile?: any): Promise<TwitterContent> {
-    const prompt = `あなたはTwitterマーケティングの専門家です。以下の${typeof source === 'string' ? '文章' : 'メディア'}を基に、140文字以内で読者を惹きつけるツイートを作成してください。
+  private buildPromptWithTempInstructions(basePrompt: string, platform: string, tempPrompts?: { platform: string; prompt: string }[]): string {
+    const tempPrompt = tempPrompts?.find(p => p.platform === platform)?.prompt;
+
+    if (tempPrompt) {
+      return `${basePrompt}
+
+【追加指示】
+${tempPrompt}`;
+    }
+
+    return basePrompt;
+  }
+
+  private async generateTwitterContent(source: ContentSource, profile?: any, tempPrompts?: { platform: string; prompt: string }[]): Promise<TwitterContent> {
+    const basePrompt = `あなたはTwitterマーケティングの専門家です。以下の${typeof source === 'string' ? '文章' : 'メディア'}を基に、140文字以内で読者を惹きつけるツイートを作成してください。
 
 【元コンテンツ】
-${typeof source === 'string' ? source : '添付ファイルを参照'}
+${typeof source === 'string' ? source : '添付ファイルを参照'}`;
+
+    const finalPrompt = this.buildPromptWithTempInstructions(basePrompt, 'twitter', tempPrompts) + `
 
 【出力形式】
 {
@@ -224,9 +242,9 @@ JSON形式のみで回答してください。`;
 
     try {
       const parsed = typeof source === 'string'
-        ? await this.generateFromText(prompt)
-        : await this.generateFromFile(prompt, source);
-      
+        ? await this.generateFromText(finalPrompt)
+        : await this.generateFromFile(finalPrompt, source);
+
       let tweetText = parsed.text || "Twitterコンテンツの生成に失敗しました。";
       if (tweetText.length > 140) {
         tweetText = tweetText.substring(0, 137) + "...";
@@ -246,11 +264,25 @@ JSON形式のみで回答してください。`;
     }
   }
 
-  private async generateYouTubeContent(source: ContentSource, profile?: any): Promise<YouTubeContent> {
-    const prompt = `あなたはYouTubeクリエイターです。以下の${typeof source === 'string' ? '文章' : 'メディア'}を基に、視聴者維持率と検索性を最大化する動画のメタデータを作成してください。
+  private async generateYouTubeContent(source: ContentSource, profile?: any, tempPrompts?: { platform: string; prompt: string }[]): Promise<YouTubeContent> {
+    // 一時プロンプトを検索
+    const tempPrompt = tempPrompts?.find(p => p.platform === 'youtube')?.prompt;
+
+    let prompt = `あなたはYouTubeクリエイターです。以下の${typeof source === 'string' ? '文章' : 'メディア'}を基に、視聴者維持率と検索性を最大化する動画のメタデータを作成してください。
 
 【元コンテンツ】
-${typeof source === 'string' ? source : '添付ファイルを参照'}
+${typeof source === 'string' ? source : '添付ファイルを参照'}`;
+
+    // 一時プロンプトがある場合は追加
+    if (tempPrompt) {
+      prompt += `
+
+【追加指示】
+${tempPrompt}`;
+    }
+
+    prompt += `
+
 
 【出力形式】
 {
@@ -260,7 +292,7 @@ ${typeof source === 'string' ? source : '添付ファイルを参照'}
   "chapters": [{"time": "00:00", "title": "イントロ"}, {"time": "01:00", "title": "本題"}],
   "hashtags": ["YouTube用ハッシュタグ1", "タグ2"]
 }
-JSON形式のみで回答してください。`;
+JSON形式のみで回答してください.`;
 
     try {
       const parsed = typeof source === 'string'
@@ -287,11 +319,25 @@ JSON形式のみで回答してください。`;
     }
   }
 
-  private async generateWordPressContent(source: ContentSource, profile?: any): Promise<WordPressContent> {
-    const prompt = `あなたはWordPressブログの編集者です。以下の${typeof source === 'string' ? '文章' : 'メディア'}を基に、SEOを意識したブログ記事を作成してください。
+  private async generateWordPressContent(source: ContentSource, profile?: any, tempPrompts?: { platform: string; prompt: string }[]): Promise<WordPressContent> {
+    // 一時プロンプトを検索 (WordPress は 'blog' としても検索)
+    const tempPrompt = tempPrompts?.find(p => p.platform === 'wordpress' || p.platform === 'blog')?.prompt;
+
+    let prompt = `あなたはWordPressブログの編集者です。以下の${typeof source === 'string' ? '文章' : 'メディア'}を基に、SEOを意識したブログ記事を作成してください。
 
 【元コンテンツ】
-${typeof source === 'string' ? source : '添付ファイルを参照'}
+${typeof source === 'string' ? source : '添付ファイルを参照'}`;
+
+    // 一時プロンプトがある場合は追加
+    if (tempPrompt) {
+      prompt += `
+
+【追加指示】
+${tempPrompt}`;
+    }
+
+    prompt += `
+
 
 【出力形式】
 {
@@ -303,7 +349,7 @@ ${typeof source === 'string' ? source : '添付ファイルを参照'}
   "seoTitle": "SEO用タイトル",
   "metaDescription": "メタディスクリプション"
 }
-JSON形式のみで回答してください。`;
+JSON形式のみで回答してください.`;
 
     try {
       const parsed = typeof source === 'string'
@@ -333,11 +379,13 @@ JSON形式のみで回答してください。`;
     }
   }
 
-  private async generateInstagramContent(source: ContentSource, profile?: any): Promise<InstagramContent> {
-    const prompt = `あなたはInstagramマーケティングの専門家です。以下の${typeof source === 'string' ? '文章' : 'メディア'}を基に、ビジュアルを重視した投稿を作成してください。
+  private async generateInstagramContent(source: ContentSource, profile?: any, tempPrompts?: { platform: string; prompt: string }[]): Promise<InstagramContent> {
+    const basePrompt = `あなたはInstagramマーケティングの専門家です。以下の${typeof source === 'string' ? '文章' : 'メディア'}を基に、ビジュアルを重視した投稿を作成してください。
 
 【元コンテンツ】
-${typeof source === 'string' ? source : '添付ファイルを参照'}
+${typeof source === 'string' ? source : '添付ファイルを参照'}`;
+
+    const finalPrompt = this.buildPromptWithTempInstructions(basePrompt, 'instagram', tempPrompts) + `
 
 【出力形式】
 {
@@ -345,12 +393,12 @@ ${typeof source === 'string' ? source : '添付ファイルを参照'}
   "hashtags": ["関連ハッシュタグ1", "ハッシュタグ2"],
   "altText": "画像の代替テキスト"
 }
-JSON形式のみで回答してください。`;
+JSON形式のみで回答してください.`;
 
     try {
       const parsed = typeof source === 'string'
-        ? await this.generateFromText(prompt)
-        : await this.generateFromFile(prompt, source);
+        ? await this.generateFromText(finalPrompt)
+        : await this.generateFromFile(finalPrompt, source);
       
       return { 
         platform: "instagram",
@@ -369,11 +417,25 @@ JSON形式のみで回答してください。`;
     }
   }
 
-  private async generateTikTokContent(source: ContentSource, profile?: any): Promise<TikTokContent> {
-    const prompt = `あなたはTikTokクリエイターです。以下の${typeof source === 'string' ? '文章' : 'メディア'}を基に、バイラルを意識したキャプションを作成してください。
+  private async generateTikTokContent(source: ContentSource, profile?: any, tempPrompts?: { platform: string; prompt: string }[]): Promise<TikTokContent> {
+    // 一時プロンプトを検索
+    const tempPrompt = tempPrompts?.find(p => p.platform === 'tiktok')?.prompt;
+
+    let prompt = `あなたはTikTokクリエイターです。以下の${typeof source === 'string' ? '文章' : 'メディア'}を基に、バイラルを意識したキャプションを作成してください。
 
 【元コンテンツ】
-${typeof source === 'string' ? source : '添付ファイルを参照'}
+${typeof source === 'string' ? source : '添付ファイルを参照'}`;
+
+    // 一時プロンプトがある場合は追加
+    if (tempPrompt) {
+      prompt += `
+
+【追加指示】
+${tempPrompt}`;
+    }
+
+    prompt += `
+
 
 【出力形式】
 {
@@ -381,7 +443,7 @@ ${typeof source === 'string' ? source : '添付ファイルを参照'}
   "hashtags": ["トレンドハッシュタグ1", "ハッシュタグ2"],
   "effects": ["推奨エフェクト1"]
 }
-JSON形式のみで回答してください。`;
+JSON形式のみで回答してください.`;
 
     try {
       const parsed = typeof source === 'string'

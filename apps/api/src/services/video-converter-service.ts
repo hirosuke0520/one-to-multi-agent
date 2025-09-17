@@ -19,7 +19,7 @@ export class VideoConverterService {
   private tempDir: string;
 
   constructor() {
-    this.tempDir = process.env.TEMP_DIR || '/app/temp';
+    this.tempDir = process.env.TEMP_DIR || './temp';
     this.ensureTempDir();
   }
 

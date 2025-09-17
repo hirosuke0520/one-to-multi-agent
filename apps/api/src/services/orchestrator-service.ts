@@ -8,6 +8,7 @@ import { getStorageService } from "../config/storage.js";
 import { MetadataServiceSQL, ContentMetadata, PlatformContent } from "./metadata-service-sql.js";
 import { PreviewService } from "./preview-service.js";
 import { VideoConverterService } from "./video-converter-service.js";
+import { PromptIntegrationService } from "./prompt-integration-service.js";
 import { ContentSource } from "@one-to-multi-agent/core";
 
 export interface ProcessJobRequest {
@@ -25,6 +26,7 @@ export interface ProcessJobRequest {
     purpose?: string;
     cta?: string;
   };
+  tempPrompts?: { platform: string; prompt: string }[]; // 一時プロンプト
 }
 
 export interface Job {
@@ -62,6 +64,7 @@ export class OrchestratorService {
   private metadataService: MetadataServiceSQL;
   private previewService: PreviewService;
   private videoConverterService: VideoConverterService;
+  private promptIntegrationService: PromptIntegrationService;
   private initialized: Promise<void>;
 
   constructor() {
@@ -72,6 +75,7 @@ export class OrchestratorService {
     this.metadataService = new MetadataServiceSQL();
     this.previewService = new PreviewService();
     this.videoConverterService = new VideoConverterService();
+    this.promptIntegrationService = new PromptIntegrationService();
     this.initialized = this.initializeStorage();
   }
 
@@ -253,7 +257,8 @@ export class OrchestratorService {
             const platformContent = await this.contentService.generatePlatformContent(
               sourceContent,
               target,
-              request.profile
+              request.profile,
+              request.tempPrompts
             );
             return {
               platform: target,
