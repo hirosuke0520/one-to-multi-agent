@@ -53,7 +53,7 @@ app.post('/', async (c) => {
     }
     
     const savedSettings = await userSettingsService.saveUserSettings(userId, settings);
-    const completed = await promptSetupService.evaluatePromptSetupStatus(userId);
+    const completed = await promptSetupService.getPromptSetupStatus(userId);
     
     return c.json({ 
       userSettings: {
@@ -80,7 +80,7 @@ app.put('/character-prompt', async (c) => {
     }
     
     const savedSettings = await userSettingsService.saveGlobalCharacterPrompt(userId, globalCharacterPrompt);
-    const completed = await promptSetupService.evaluatePromptSetupStatus(userId);
+    const completed = await promptSetupService.getPromptSetupStatus(userId);
     
     return c.json({ 
       userSettings: {
@@ -112,7 +112,7 @@ app.post('/prompts', async (c) => {
     }
 
     const savedPrompt = await promptIntegrationService.savePlatformPrompt(userId, platform, prompt);
-    const completed = await promptSetupService.evaluatePromptSetupStatus(userId);
+    const completed = await promptSetupService.getPromptSetupStatus(userId);
 
     return c.json({
       prompt: savedPrompt,
@@ -134,7 +134,7 @@ app.delete('/', async (c) => {
       return c.json({ error: 'User settings not found' }, 404);
     }
 
-    const completed = await promptSetupService.evaluatePromptSetupStatus(userId);
+    const completed = await promptSetupService.getPromptSetupStatus(userId);
 
     return c.json({
       message: 'User settings reset to defaults',
@@ -146,6 +146,51 @@ app.delete('/', async (c) => {
   } catch (error) {
     console.error('Error resetting user settings:', error);
     return c.json({ error: 'Failed to reset user settings' }, 500);
+  }
+});
+
+// プロンプト設定状況の詳細確認（デバッグ用）
+app.get('/prompt-status', async (c) => {
+  try {
+    const userId = c.get('userId') as string;
+    const details = await promptSetupService.getPromptSetupDetails(userId);
+
+    return c.json({
+      userId,
+      promptSetupDetails: details,
+      message: details.isComplete
+        ? 'プロンプト設定完了'
+        : 'プロンプト設定未完了'
+    });
+  } catch (error) {
+    console.error('Error fetching prompt setup details:', error);
+    return c.json({ error: 'Failed to fetch prompt setup details' }, 500);
+  }
+});
+
+// 特定プラットフォームのプロンプト設定確認
+app.get('/prompt-status/:platform', async (c) => {
+  try {
+    const userId = c.get('userId') as string;
+    const platform = c.req.param('platform');
+
+    if (!platform) {
+      return c.json({ error: 'Platform parameter is required' }, 400);
+    }
+
+    const hasPlatformPrompt = await promptSetupService.hasPlatformPrompt(userId, platform);
+    const hasGlobalPrompt = await promptSetupService.hasGlobalCharacterPrompt(userId);
+
+    return c.json({
+      userId,
+      platform,
+      hasPlatformPrompt,
+      hasGlobalPrompt,
+      canGenerate: hasGlobalPrompt && hasPlatformPrompt
+    });
+  } catch (error) {
+    console.error('Error checking platform prompt status:', error);
+    return c.json({ error: 'Failed to check platform prompt status' }, 500);
   }
 });
 

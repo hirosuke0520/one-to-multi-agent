@@ -2,6 +2,7 @@ import { Hono } from "hono";
 import { cors } from "hono/cors";
 import { Pool } from 'pg';
 import { UserService } from "../services/user-service.js";
+import { PromptSetupService } from "../services/prompt-setup-service.js";
 
 const auth = new Hono();
 
@@ -24,6 +25,7 @@ const pool = new Pool({
 });
 
 const userService = new UserService(pool);
+const promptSetupService = new PromptSetupService(pool);
 
 /**
  * Google認証コールバック
@@ -46,6 +48,9 @@ auth.post("/signin", async (c) => {
       picture
     });
 
+    // プロンプト設定完了状態を動的に判定
+    const promptSetupCompleted = await promptSetupService.getPromptSetupStatus(user.id);
+
     return c.json({
       success: true,
       userId: user.id,
@@ -54,8 +59,7 @@ auth.post("/signin", async (c) => {
         email: user.email,
         name: user.name,
         picture: user.picture,
-        promptSetupCompleted: user.prompt_setup_completed,
-        promptSetupCompletedAt: user.prompt_setup_completed_at
+        promptSetupCompleted
       }
     });
   } catch (error) {
@@ -76,10 +80,13 @@ auth.get("/user/:userId", async (c) => {
     }
 
     const user = await userService.findById(userId);
-    
+
     if (!user) {
       return c.json({ error: "User not found" }, 404);
     }
+
+    // プロンプト設定完了状態を動的に判定
+    const promptSetupCompleted = await promptSetupService.getPromptSetupStatus(user.id);
 
     return c.json({
       id: user.id,
@@ -89,8 +96,7 @@ auth.get("/user/:userId", async (c) => {
       createdAt: user.created_at,
       updatedAt: user.updated_at,
       lastLoginAt: user.last_login_at,
-      promptSetupCompleted: user.prompt_setup_completed,
-      promptSetupCompletedAt: user.prompt_setup_completed_at
+      promptSetupCompleted
     });
   } catch (error) {
     console.error("Error fetching user:", error);

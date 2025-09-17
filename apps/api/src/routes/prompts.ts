@@ -83,7 +83,7 @@ app.put('/:platform', async (c) => {
     }
     
     const savedPrompt = await promptService.savePrompt(userId, platform, prompt);
-    const completed = await promptSetupService.evaluatePromptSetupStatus(userId);
+    const completed = await promptSetupService.getPromptSetupStatus(userId);
     return c.json({ prompt: savedPrompt, promptSetupCompleted: completed });
   } catch (error) {
     console.error('Error saving prompt:', error);
@@ -120,7 +120,7 @@ app.post('/batch', async (c) => {
     }
     
     const savedPrompts = await promptService.saveMultiplePrompts(userId, promptsArray);
-    const completed = await promptSetupService.evaluatePromptSetupStatus(userId);
+    const completed = await promptSetupService.getPromptSetupStatus(userId);
     return c.json({ savedPrompts, promptSetupCompleted: completed });
   } catch (error) {
     console.error('Error saving prompts:', error);
@@ -145,7 +145,7 @@ app.delete('/:platform', async (c) => {
       return c.json({ error: 'Prompt not found' }, 404);
     }
 
-    const completed = await promptSetupService.evaluatePromptSetupStatus(userId);
+    const completed = await promptSetupService.getPromptSetupStatus(userId);
     return c.json({ message: 'Prompt deleted successfully', promptSetupCompleted: completed });
   } catch (error) {
     console.error('Error deleting prompt:', error);
@@ -158,7 +158,7 @@ app.delete('/', async (c) => {
   try {
     const userId = c.get('userId') as string;
     await promptService.deleteAllPrompts(userId);
-    const completed = await promptSetupService.evaluatePromptSetupStatus(userId);
+    const completed = await promptSetupService.getPromptSetupStatus(userId);
     return c.json({ message: 'All prompts reset to defaults', promptSetupCompleted: completed });
   } catch (error) {
     console.error('Error resetting prompts:', error);

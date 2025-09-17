@@ -9,45 +9,48 @@ export class PromptSetupService {
   }
 
   /**
-   * プロンプト設定が完了しているか判定し、ユーザーのステータスを更新
+   * プロンプト設定が完了しているかを直接判定
+   * 条件: グローバルキャラクタープロンプト AND いずれかのプラットフォーム専用プロンプト
    */
-  async evaluatePromptSetupStatus(userId: string): Promise<boolean> {
+  async getPromptSetupStatus(userId: string): Promise<boolean> {
     const hasGlobalPrompt = await this.hasGlobalCharacterPrompt(userId);
     const hasAnyPlatformPrompt = await this.hasAnyPlatformPrompt(userId);
-    const completed = hasGlobalPrompt && hasAnyPlatformPrompt;
 
-    await this.updatePromptSetupFlag(userId, completed);
-
-    return completed;
+    return hasGlobalPrompt && hasAnyPlatformPrompt;
   }
 
   /**
-   * ユーザーの現在のプロンプト設定完了フラグを取得
+   * プロンプト設定の詳細状況を取得（デバッグ用）
    */
-  async getPromptSetupStatus(userId: string): Promise<boolean> {
-    const result = await this.pool.query(
-      'SELECT prompt_setup_completed FROM users WHERE id = $1',
-      [userId]
-    );
+  async getPromptSetupDetails(userId: string): Promise<{
+    hasGlobalPrompt: boolean;
+    hasAnyPlatformPrompt: boolean;
+    platformPromptCount: number;
+    isComplete: boolean;
+  }> {
+    const hasGlobalPrompt = await this.hasGlobalCharacterPrompt(userId);
+    const platformPromptResult = await this.getPlatformPromptDetails(userId);
 
-    return !!result.rows[0]?.prompt_setup_completed;
+    return {
+      hasGlobalPrompt,
+      hasAnyPlatformPrompt: platformPromptResult.hasAny,
+      platformPromptCount: platformPromptResult.count,
+      isComplete: hasGlobalPrompt && platformPromptResult.hasAny
+    };
   }
 
-  private async hasGlobalCharacterPrompt(userId: string): Promise<boolean> {
+  async hasGlobalCharacterPrompt(userId: string): Promise<boolean> {
     const result = await this.pool.query(
       `SELECT global_character_prompt
        FROM user_settings
        WHERE user_id = $1
+         AND global_character_prompt IS NOT NULL
+         AND LENGTH(TRIM(global_character_prompt)) > 0
        LIMIT 1`,
       [userId]
     );
 
-    if (result.rows.length === 0) {
-      return false;
-    }
-
-    const prompt = result.rows[0].global_character_prompt as string | null;
-    return !!prompt && prompt.trim().length > 0;
+    return result.rows.length > 0;
   }
 
   private async hasAnyPlatformPrompt(userId: string): Promise<boolean> {
@@ -63,22 +66,43 @@ export class PromptSetupService {
     return (result.rows[0]?.count ?? 0) > 0;
   }
 
-  private async updatePromptSetupFlag(userId: string, completed: boolean): Promise<void> {
-    await this.pool.query(
-      `UPDATE users
-       SET
-         prompt_setup_completed = $2,
-         prompt_setup_completed_at = CASE
-           WHEN $2 THEN COALESCE(prompt_setup_completed_at, CURRENT_TIMESTAMP)
-           ELSE NULL
-         END
-       WHERE id = $1
-         AND (
-           prompt_setup_completed IS DISTINCT FROM $2
-           OR ($2 AND prompt_setup_completed_at IS NULL)
-           OR (NOT $2 AND prompt_setup_completed_at IS NOT NULL)
-         )`,
-      [userId, completed]
+  private async getPlatformPromptDetails(userId: string): Promise<{
+    hasAny: boolean;
+    count: number;
+    platforms: string[];
+  }> {
+    const result = await this.pool.query(
+      `SELECT platform
+       FROM user_prompts
+       WHERE user_id = $1
+         AND prompt IS NOT NULL
+         AND LENGTH(TRIM(prompt)) > 0`,
+      [userId]
     );
+
+    const platforms = result.rows.map(row => row.platform);
+    return {
+      hasAny: platforms.length > 0,
+      count: platforms.length,
+      platforms
+    };
   }
+
+  /**
+   * 特定のプラットフォームのプロンプト設定状況を確認
+   */
+  async hasPlatformPrompt(userId: string, platform: string): Promise<boolean> {
+    const result = await this.pool.query(
+      `SELECT 1
+       FROM user_prompts
+       WHERE user_id = $1
+         AND platform = $2
+         AND prompt IS NOT NULL
+         AND LENGTH(TRIM(prompt)) > 0`,
+      [userId, platform]
+    );
+
+    return result.rows.length > 0;
+  }
+
 }

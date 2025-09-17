@@ -145,16 +145,6 @@ export class PromptIntegrationService {
         ]
       );
       
-      // user_promptsの使用回数を更新
-      if (promptInfo.prompts.platformPrompt) {
-        await client.query(
-          `UPDATE user_prompts 
-           SET used_count = COALESCE(used_count, 0) + 1, last_used_at = CURRENT_TIMESTAMP
-           WHERE user_id = (SELECT user_id FROM content_metadata WHERE id = $1)
-           AND platform = $2`,
-          [contentId, platform]
-        );
-      }
       
       await client.query('COMMIT');
     } catch (error) {
