@@ -4,7 +4,6 @@ import { useState } from 'react';
 import { PlatformContent } from '@one-to-multi-agent/core';
 import { getApiUrl } from '../lib/config';
 import { useHistory } from '../contexts/HistoryContext';
-import { TempPrompt } from '../components/TempPromptModal';
 
 // Type definitions for API responses and states
 export interface Job {
@@ -43,7 +42,6 @@ export const useContentGenerator = (userId?: string) => {
   const [content, setContent] = useState('');
   const [file, setFile] = useState<File | null>(null);
   const [targets, setTargets] = useState<string[]>([]);
-  const [tempPrompts, setTempPrompts] = useState<TempPrompt[]>([]);
   const [isProcessing, setIsProcessing] = useState(false);
   const [results, setResults] = useState<JobResults | null>(null);
   const [editableContent, setEditableContent] = useState<Record<string, Partial<PlatformContent>>>({});
@@ -69,8 +67,7 @@ export const useContentGenerator = (userId?: string) => {
             sourceType, 
             content, 
             targets,
-            userId,
-            tempPrompts: tempPrompts.length > 0 ? tempPrompts : undefined
+            userId
           }),
         });
       } else {
@@ -81,9 +78,6 @@ export const useContentGenerator = (userId?: string) => {
         formData.append('targets', JSON.stringify(targets));
         if (userId) {
           formData.append('userId', userId);
-        }
-        if (tempPrompts.length > 0) {
-          formData.append('tempPrompts', JSON.stringify(tempPrompts));
         }
         response = await fetch(`${apiUrl}/orchestrator/process`, {
           method: 'POST',
@@ -249,7 +243,6 @@ export const useContentGenerator = (userId?: string) => {
     setContent('');
     setFile(null);
     setTargets([]);
-    setTempPrompts([]);
     setIsProcessing(false);
     setResults(null);
     setEditableContent({});
@@ -265,8 +258,6 @@ export const useContentGenerator = (userId?: string) => {
     setFile,
     targets,
     setTargets,
-    tempPrompts,
-    setTempPrompts,
     isProcessing,
     results,
     editableContent,

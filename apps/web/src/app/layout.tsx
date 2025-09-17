@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { Inter, JetBrains_Mono } from "next/font/google";
+import { Geist, Geist_Mono } from "next/font/google";
 import Script from "next/script";
 import { auth } from "@/auth";
 import { HistoryProviderWrapper } from "../components/HistoryProviderWrapper";
@@ -7,13 +7,13 @@ import { SidebarProvider } from "../contexts/SidebarContext";
 import { Header } from "../components/Header";
 import "./globals.css";
 
-const inter = Inter({
-  variable: "--font-inter",
+const geistSans = Geist({
+  variable: "--font-geist-sans",
   subsets: ["latin"],
 });
 
-const jetbrainsMono = JetBrains_Mono({
-  variable: "--font-jetbrains-mono",
+const geistMono = Geist_Mono({
+  variable: "--font-geist-mono",
   subsets: ["latin"],
 });
 
@@ -27,24 +27,18 @@ export default async function RootLayout({
 }: Readonly<{
   children: React.ReactNode;
 }>) {
-  let session = null;
-  try {
-    session = await auth();
-  } catch (error) {
-    // Handle auth errors gracefully (e.g., invalid session tokens)
-    console.warn('Authentication error, continuing with no session:', error);
-    session = null;
-  }
+  const session = await auth();
 
   return (
     <html lang="ja">
       <body
-        className={`${inter.variable} ${jetbrainsMono.variable} antialiased h-screen bg-black`}
+        className={`${geistSans.variable} ${geistMono.variable} antialiased h-screen overflow-hidden`}
       >
         <Script src="/runtime-config.js" strategy="beforeInteractive" />
         <SidebarProvider>
           <HistoryProviderWrapper
             userId={session?.user?.id}
+            isAuthenticated={!!session}
           >
             <Header />
             {children}

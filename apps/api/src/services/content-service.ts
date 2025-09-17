@@ -57,16 +57,14 @@ export class ContentService {
   async generatePlatformContent(
     source: ContentSource,
     platform: string,
-    profile?: ProcessJobRequest["profile"],
-    tempPrompts?: { platform: string; prompt: string }[]
+    profile?: ProcessJobRequest["profile"]
   ): Promise<ContentServicePlatformContent> {
     console.log(`Generating ${platform} content...`);
 
     const aiGenerated = await this.aiService.generatePlatformContent(
       source,
       platform,
-      profile,
-      tempPrompts
+      profile
     );
 
     const platformContent: ContentServicePlatformContent = {

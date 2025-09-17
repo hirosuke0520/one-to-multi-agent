@@ -33,8 +33,6 @@ export default function HomeContent({ userId, isAuthenticated }: HomeContentProp
     setFile,
     targets,
     setTargets,
-    tempPrompts,
-    setTempPrompts,
     isProcessing,
     results,
     editableContent,
@@ -63,7 +61,7 @@ export default function HomeContent({ userId, isAuthenticated }: HomeContentProp
   };
 
   return (
-    <div className="flex h-[calc(100vh-64px)] bg-black overflow-hidden">
+    <div className="flex h-[calc(100vh-64px)] bg-gray-50 overflow-hidden">
       {/* Sidebar */}
       <Sidebar 
         selectedThreadId={selectedThreadId}
@@ -81,18 +79,12 @@ export default function HomeContent({ userId, isAuthenticated }: HomeContentProp
         ) : (
           <div className="flex-1 overflow-y-auto">
             <div className="max-w-4xl mx-auto px-4 md:px-6 py-4 md:py-8">
-              <header className="mb-8 md:mb-12 text-center">
-                <div className="inline-flex items-center justify-center w-16 h-16 bg-gradient-to-br from-blue-500 to-purple-600 rounded-2xl mb-6">
-                  <svg className="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
-                  </svg>
-                </div>
-                <h1 className="text-3xl md:text-4xl font-bold text-blue-500 mb-4 font-inter">
+              <header className="mb-6 md:mb-8 text-center">
+                <h1 className="text-2xl md:text-3xl font-bold text-gray-900 mb-2">
                   One to Multi Agent
                 </h1>
-                <p className="text-gray-300 text-lg md:text-xl max-w-2xl mx-auto leading-relaxed font-inter">
-                  1つのソースから複数プラットフォーム向けの
-                  <span className="font-semibold text-blue-400">高品質コンテンツ</span>を自動生成
+                <p className="text-gray-600 text-sm md:text-base">
+                  1つのソースから複数プラットフォーム向けのコンテンツを自動生成
                 </p>
               </header>
 
@@ -104,8 +96,6 @@ export default function HomeContent({ userId, isAuthenticated }: HomeContentProp
                 setFile={setFile}
                 targets={targets}
                 setTargets={setTargets}
-                tempPrompts={tempPrompts}
-                onTempPromptsChange={setTempPrompts}
                 isProcessing={isProcessing}
                 handleSubmit={handleSubmit}
               />
@@ -113,12 +103,12 @@ export default function HomeContent({ userId, isAuthenticated }: HomeContentProp
               {isProcessing && !results && (
                 <div className="mt-4 md:mt-6 text-center">
                   <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto"></div>
-                  <p className="mt-2 text-blue-400 text-sm md:text-base font-inter">コンテンツを処理中です...</p>
+                  <p className="mt-2 text-blue-800 text-sm md:text-base">コンテンツを処理中です...</p>
                 </div>
               )}
 
               {error && (
-                <div className="mt-4 md:mt-6 bg-red-900 border border-red-600 text-red-300 px-4 py-3 rounded relative text-sm md:text-base font-inter">
+                <div className="mt-4 md:mt-6 bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded relative text-sm md:text-base">
                   <strong>エラー:</strong> {error}
                 </div>
               )}

@@ -10,7 +10,6 @@ import { video } from "./routes/video.js";
 import { admin } from "./routes/admin.js";
 import auth from "./routes/auth.js";
 import prompts from "./routes/prompts.js";
-import userSettings from "./routes/user-settings.js";
 import { databaseService } from "./services/database-service.js";
 
 const app = new Hono();
@@ -49,25 +48,23 @@ app.route("/video", video);
 app.route("/admin", admin);
 app.route("/auth", auth);
 app.route("/prompts", prompts);
-app.route("/user-settings", userSettings);
 
 const port = parseInt(process.env.PORT || "8787");
 
 async function startServer() {
   try {
-    // Try to initialize database connection and tables (optional for development)
+    // Initialize database connection and tables
     console.log('Connecting to database...');
+    await databaseService.connect();
+    
     try {
-      await databaseService.connect();
       await databaseService.initializeTables();
-      console.log('Database connected successfully');
-    } catch (dbError) {
-      console.warn('Database connection failed (continuing without database):', dbError instanceof Error ? dbError.message : dbError);
-      console.log('API server will run in database-free mode');
+    } catch (error) {
+      console.log('Table initialization skipped (tables may already exist):', error instanceof Error ? error.message : error);
     }
-
+    
     console.log(`Starting server on port ${port}`);
-
+    
     serve({
       fetch: app.fetch,
       port,

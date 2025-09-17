@@ -1,0 +1,70 @@
+{
+  "sourceText": "AI時代のエンジニアリング教育について",
+  "platformResults": [
+    {
+      "platform": "twitter",
+      "success": true,
+      "content": {
+        "id": "bf2fd6cb-23ed-41a5-a20a-9a18c575b447",
+        "platform": "twitter",
+        "content": {
+          "platform": "twitter",
+          "text": "Twitterコンテンツの生成に失敗しました。",
+          "hashtags": [
+            "エラー"
+          ]
+        },
+        "metadata": {},
+        "notes": [
+          "Generated for twitter",
+          "Platform: twitter"
+        ]
+      }
+    },
+    {
+      "platform": "wordpress",
+      "success": true,
+      "content": {
+        "id": "6dd28c3c-eae7-4f4e-95ec-581f42a3c82d",
+        "platform": "wordpress",
+        "content": {
+          "platform": "wordpress",
+          "title": "WordPress記事の生成に失敗しました。",
+          "excerpt": "",
+          "content": "",
+          "categories": [],
+          "tags": [
+            "エラー"
+          ]
+        },
+        "metadata": {},
+        "notes": [
+          "Generated for wordpress",
+          "Platform: wordpress"
+        ]
+      }
+    },
+    {
+      "platform": "youtube",
+      "success": true,
+      "content": {
+        "id": "043fa5e3-649e-48f6-9cc6-75264fbcaf00",
+        "platform": "youtube",
+        "content": {
+          "platform": "youtube",
+          "title": "YouTubeコンテンツ生成エラー",
+          "description": "コンテンツの生成中にエラーが発生しました。",
+          "chapters": [],
+          "hashtags": [
+            "エラー"
+          ]
+        },
+        "metadata": {},
+        "notes": [
+          "Generated for youtube",
+          "Platform: youtube"
+        ]
+      }
+    }
+  ]
+}
