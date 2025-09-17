@@ -123,11 +123,9 @@ export class PromptIntegrationService {
       await client.query(
         `INSERT INTO platform_content (
           id, content_id, platform, title, description, content, hashtags, script, chapters,
-          character_prompt_used, platform_prompt_used, generation_prompt
-        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
+          generation_prompt
+        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
         ON CONFLICT (id) DO UPDATE SET
-          character_prompt_used = EXCLUDED.character_prompt_used,
-          platform_prompt_used = EXCLUDED.platform_prompt_used,
           generation_prompt = EXCLUDED.generation_prompt`,
         [
           `${contentId}_${platform}`,
@@ -139,8 +137,6 @@ export class PromptIntegrationService {
           JSON.stringify(content.hashtags || []),
           content.script || null,
           JSON.stringify(content.chapters || []),
-          promptInfo.prompts.characterPrompt || null,
-          promptInfo.prompts.platformPrompt || null,
           promptInfo.finalPrompt
         ]
       );
@@ -160,20 +156,18 @@ export class PromptIntegrationService {
    */
   async getUsedPrompts(contentId: string, platform: Platform): Promise<PromptData | null> {
     const result = await this.pool.query(
-      `SELECT character_prompt_used, platform_prompt_used, generation_prompt
+      `SELECT generation_prompt
        FROM platform_content
        WHERE content_id = $1 AND platform = $2`,
       [contentId, platform]
     );
-    
+
     if (result.rows.length === 0) {
       return null;
     }
-    
+
     const row = result.rows[0];
     return {
-      characterPrompt: row.character_prompt_used,
-      platformPrompt: row.platform_prompt_used,
       tempPrompt: row.generation_prompt // 統合済みプロンプト全体
     };
   }
