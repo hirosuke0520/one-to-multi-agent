@@ -1,0 +1,13 @@
+{
+  "sourceType": "text",
+  "content": "今日は革新的なAIツールについて説明します。このツールは音声認識、自動要約、コンテンツ最適化機能を搭載しており、クリエイターの作業効率を大幅に向上させます。複数のプラットフォームに対応し、一度の入力で様々な媒体向けのコンテンツを生成できます。",
+  "targets": [
+    "threads",
+    "wordpress"
+  ],
+  "profile": {
+    "tone": "conversational",
+    "audience": "general",
+    "purpose": "inform"
+  }
+}

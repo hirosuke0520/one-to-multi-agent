@@ -20,8 +20,8 @@ export class FileStorageService {
   private storageDir: string;
 
   constructor() {
-    // Use relative path for local development, Docker mount for production
-    this.storageDir = process.env.STORAGE_DIR || './storage';
+    // Use Docker volume mount point for persistence
+    this.storageDir = process.env.STORAGE_DIR || '/app/storage';
     this.ensureStorageDir();
   }
 
