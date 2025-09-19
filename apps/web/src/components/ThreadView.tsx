@@ -5,6 +5,7 @@ import { getApiUrl } from '../lib/config';
 import { PlatformContent as CorePlatformContent } from '@one-to-multi-agent/core';
 import { PlatformCard } from './PlatformCard';
 import { PlatformResult } from '../hooks/useContentGenerator';
+import { HistoryPromptModal } from './HistoryPromptModal';
 
 interface AudioPreview {
   duration: number;
@@ -53,6 +54,8 @@ export function ThreadView({ threadId, userId }: ThreadViewProps) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [editableContent, setEditableContent] = useState<Record<string, Partial<CorePlatformContent>>>({});
+  const [isPromptModalOpen, setIsPromptModalOpen] = useState(false);
+  const [token, setToken] = useState('');
 
   const fetchThread = async () => {
     setLoading(true);
@@ -129,6 +132,21 @@ export function ThreadView({ threadId, userId }: ThreadViewProps) {
     return `${(bytes / (1024 * 1024)).toFixed(1)}MB`;
   };
 
+  // トークンを取得（簡易的な実装）
+  const getAuthToken = () => {
+    if (typeof window !== 'undefined') {
+      // クッキーからトークンを取得する簡易実装
+      const cookies = document.cookie.split(';');
+      for (const cookie of cookies) {
+        const [name, value] = cookie.trim().split('=');
+        if (name === 'authjs.session-token' || name === '__Secure-authjs.session-token') {
+          return value;
+        }
+      }
+    }
+    return '';
+  };
+
   const getSourceTypeDisplay = (sourceType: string) => {
     switch (sourceType) {
       case 'text': return 'テキスト';
@@ -185,10 +203,10 @@ export function ThreadView({ threadId, userId }: ThreadViewProps) {
 
   if (loading) {
     return (
-      <div className="flex-1 flex items-center justify-center">
+      <div className="flex-1 flex items-center justify-center bg-gray-900">
         <div className="text-center">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto"></div>
-          <p className="mt-2 text-gray-600">読み込み中...</p>
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-400 mx-auto"></div>
+          <p className="mt-2 text-gray-300">読み込み中...</p>
         </div>
       </div>
     );
@@ -196,9 +214,9 @@ export function ThreadView({ threadId, userId }: ThreadViewProps) {
 
   if (error) {
     return (
-      <div className="flex-1 flex items-center justify-center">
+      <div className="flex-1 flex items-center justify-center bg-gray-900">
         <div className="text-center">
-          <p className="text-red-600">エラー: {error}</p>
+          <p className="text-red-400">エラー: {error}</p>
           <button
             onClick={fetchThread}
             className="mt-2 px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
@@ -212,28 +230,28 @@ export function ThreadView({ threadId, userId }: ThreadViewProps) {
 
   if (!thread) {
     return (
-      <div className="flex-1 flex items-center justify-center">
-        <p className="text-gray-600">スレッドが見つかりません</p>
+      <div className="flex-1 flex items-center justify-center bg-gray-900">
+        <p className="text-gray-300">スレッドが見つかりません</p>
       </div>
     );
   }
 
   return (
-    <div className="flex-1 overflow-y-auto p-4 md:p-6">
+    <div className="flex-1 overflow-y-auto p-4 md:p-6 bg-gray-900">
       <div className="max-w-4xl mx-auto">
         {/* Thread Header */}
         <div className="mb-4 md:mb-6">
           <div className="flex items-center space-x-2 md:space-x-3 mb-2 flex-wrap">
-            <span className="px-2 md:px-3 py-1 bg-blue-100 text-blue-800 rounded-full text-xs md:text-sm">
+            <span className="px-2 md:px-3 py-1 bg-blue-900 text-blue-300 rounded-full text-xs md:text-sm">
               {getSourceTypeDisplay(thread.sourceType)}
             </span>
-            <span className="text-xs md:text-sm text-gray-500">
+            <span className="text-xs md:text-sm text-gray-400">
               {formatDate(thread.createdAt)}
             </span>
           </div>
           
           {thread.originalFileName && (
-            <div className="flex items-center space-x-2 text-xs md:text-sm text-gray-600 mb-2 flex-wrap">
+            <div className="flex items-center space-x-2 text-xs md:text-sm text-gray-400 mb-2 flex-wrap">
               <span>📎 {thread.originalFileName}</span>
               {thread.duration && (
                 <span>({formatDuration(thread.duration)})</span>
@@ -247,8 +265,8 @@ export function ThreadView({ threadId, userId }: ThreadViewProps) {
 
         {/* Preview Data */}
         {(thread.sourceType === 'video' || thread.sourceType === 'audio' || thread.previewData) && (
-          <div className="mb-6 p-4 bg-gray-50 rounded-lg">
-            <h3 className="font-medium text-gray-800 mb-3">プレビュー</h3>
+          <div className="mb-6 p-4 bg-gray-800 border border-gray-700 rounded-lg">
+            <h3 className="font-medium text-white mb-3">プレビュー</h3>
             
             {thread.sourceType === 'video' && (
               <div className="mb-3">
@@ -263,17 +281,17 @@ export function ThreadView({ threadId, userId }: ThreadViewProps) {
                   お使いのブラウザは動画再生に対応していません。
                 </video>
                 {thread.previewData && 'width' in thread.previewData && 'height' in thread.previewData && (
-                  <div className="mt-2 text-xs text-gray-500">
+                  <div className="mt-2 text-xs text-gray-400">
                     解像度: {thread.previewData.width} × {thread.previewData.height}
                   </div>
                 )}
               </div>
             )}
-            
+
             {thread.sourceType === 'audio' && (
               <div className="mb-3">
-                <audio 
-                  controls 
+                <audio
+                  controls
                   className="w-full max-w-md"
                   src={`${getApiUrl()}/audio/${thread.id}`}
                   preload="metadata"
@@ -281,16 +299,16 @@ export function ThreadView({ threadId, userId }: ThreadViewProps) {
                   お使いのブラウザは音声再生に対応していません。
                 </audio>
                 {thread.previewData && 'duration' in thread.previewData && (
-                  <div className="mt-2 text-xs text-gray-500">
+                  <div className="mt-2 text-xs text-gray-400">
                     長さ: {formatDuration(thread.previewData.duration)}
                   </div>
                 )}
               </div>
             )}
-            
+
             {/* Preview Data that's not audio/video (e.g., waveform visualization for old records) */}
             {thread.previewData && thread.sourceType !== 'audio' && thread.sourceType !== 'video' && (
-              <div className="text-sm text-gray-600">
+              <div className="text-sm text-gray-400">
                 Preview data available
               </div>
             )}
@@ -300,11 +318,11 @@ export function ThreadView({ threadId, userId }: ThreadViewProps) {
         {/* Source Content Display - Only for text input */}
         {thread.sourceType === 'text' && thread.sourceText && (
           <div className="mb-6 md:mb-8">
-            <h3 className="text-lg md:text-xl font-semibold text-gray-800 mb-3">
+            <h3 className="text-lg md:text-xl font-semibold text-white mb-3">
               入力テキスト
             </h3>
-            <div className="bg-gray-50 border border-gray-200 rounded-lg p-4">
-              <p className="text-gray-800 whitespace-pre-wrap text-sm md:text-base leading-relaxed">
+            <div className="bg-gray-800 border border-gray-700 rounded-lg p-4">
+              <p className="text-gray-300 whitespace-pre-wrap text-sm md:text-base leading-relaxed">
                 {thread.sourceText}
               </p>
             </div>
@@ -313,17 +331,54 @@ export function ThreadView({ threadId, userId }: ThreadViewProps) {
 
         {/* Generated Content */}
         <div className="mt-6 md:mt-8 space-y-4 md:space-y-6">
-          <h2 className="text-xl md:text-2xl font-bold text-gray-900">生成結果</h2>
+          <div className="flex items-center justify-between">
+            <h2 className="text-xl md:text-2xl font-bold text-white">生成結果</h2>
+            {userId && (
+              <button
+                onClick={() => {
+                  setToken(getAuthToken());
+                  setIsPromptModalOpen(true);
+                }}
+                className="flex items-center gap-2 px-3 py-2 text-sm bg-blue-900 text-blue-300 rounded-lg hover:bg-blue-800 transition-colors"
+              >
+                <svg
+                  className="w-4 h-4"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
+                  />
+                </svg>
+                使用したプロンプトを表示
+              </button>
+            )}
+          </div>
           {getPlatformResults().map((result, i) => (
-            <PlatformCard 
-              key={i} 
-              result={result} 
-              editableContent={editableContent[result.platform]} 
+            <PlatformCard
+              key={i}
+              result={result}
+              editableContent={editableContent[result.platform]}
               updateEditableContent={updateEditableContent}
               handlePublish={handlePublish}
             />
           ))}
         </div>
+
+        {/* 履歴プロンプト表示モーダル */}
+        {userId && (
+          <HistoryPromptModal
+            isOpen={isPromptModalOpen}
+            onClose={() => setIsPromptModalOpen(false)}
+            threadId={threadId}
+            platforms={thread.generatedContent.map(content => content.platform)}
+            token={token}
+          />
+        )}
       </div>
     </div>
   );

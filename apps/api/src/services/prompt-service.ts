@@ -1,5 +1,6 @@
 import { Pool } from 'pg';
 import { pool as defaultPool } from '../db/pool.js';
+import { UserSettingsService } from './user-settings-service.js';
 
 export interface UserPrompt {
   user_id: string;
@@ -13,9 +14,11 @@ export type Platform = 'twitter' | 'instagram' | 'tiktok' | 'threads' | 'youtube
 
 export class PromptService {
   private pool: Pool;
+  private userSettingsService: UserSettingsService;
 
   constructor(pool?: Pool) {
     this.pool = pool || defaultPool;
+    this.userSettingsService = new UserSettingsService(this.pool);
   }
 
   /**
@@ -115,16 +118,46 @@ export class PromptService {
   }
 
   /**
+   * グローバルキャラクタープロンプトと統合された完全なプロンプトを取得
+   */
+  async getCombinedPrompt(userId: string, platform: Platform): Promise<string> {
+    // グローバルキャラクタープロンプトを取得
+    const globalPrompt = await this.userSettingsService.getGlobalCharacterPrompt(userId) ||
+                         this.userSettingsService.getDefaultGlobalCharacterPrompt();
+
+    // プラットフォーム固有のプロンプトを取得
+    const userPrompt = await this.getPromptByPlatform(userId, platform);
+    const platformPrompt = userPrompt?.prompt || this.getDefaultPrompts()[platform];
+
+    // 組み合わせて返す
+    return `${globalPrompt}\n\n${platformPrompt}`;
+  }
+
+  /**
+   * 複数プラットフォームの統合プロンプトを取得
+   */
+  async getCombinedPrompts(userId: string): Promise<Record<Platform, string>> {
+    const platforms: Platform[] = ['twitter', 'instagram', 'tiktok', 'threads', 'youtube', 'blog'];
+    const combinedPrompts: Record<Platform, string> = {} as Record<Platform, string>;
+
+    for (const platform of platforms) {
+      combinedPrompts[platform] = await this.getCombinedPrompt(userId, platform);
+    }
+
+    return combinedPrompts;
+  }
+
+  /**
    * デフォルトプロンプトを取得（システム共通のプロンプト）
    */
   getDefaultPrompts(): Record<Platform, string> {
     return {
-      twitter: 'Twitterに最適化されたコンテンツを生成してください。',
-      instagram: 'Instagramに最適化されたコンテンツを生成してください。',
-      tiktok: 'TikTokに最適化されたコンテンツを生成してください。',
-      threads: 'Threadsに最適化されたコンテンツを生成してください。',
-      youtube: 'YouTubeに最適化されたコンテンツを生成してください。',
-      blog: 'ブログに最適化されたコンテンツを生成してください。'
+      twitter: 'Twitterに最適化されたコンテンツを生成してください。280文字以内で簡潔に、ハッシュタグを効果的に使用してください。',
+      instagram: 'Instagramに最適化されたコンテンツを生成してください。視覚的魅力を重視し、ハッシュタグを最大30個まで含めてください。',
+      tiktok: 'TikTokに最適化されたコンテンツを生成してください。若年層に刺さる、トレンドを意識した内容にしてください。',
+      threads: 'Threadsに最適化されたコンテンツを生成してください。会話を促進し、コミュニティ感を重視した内容にしてください。',
+      youtube: 'YouTubeに最適化されたコンテンツを生成してください。タイトル、説明文、台本を含めて詳細に作成してください。',
+      blog: 'ブログに最適化されたコンテンツを生成してください。SEOを意識し、詳細で価値のある情報を提供してください。'
     };
   }
 }

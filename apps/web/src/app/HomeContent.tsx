@@ -18,6 +18,7 @@ export default function HomeContent({ userId, isAuthenticated }: HomeContentProp
   const router = useRouter();
   const searchParams = useSearchParams();
   const [selectedThreadId, setSelectedThreadId] = useState<string | null>(null);
+  const [tempPrompts, setTempPrompts] = useState<Record<string, string>>({});
   const { isSidebarOpen, closeSidebar } = useSidebar();
 
   useEffect(() => {
@@ -61,9 +62,9 @@ export default function HomeContent({ userId, isAuthenticated }: HomeContentProp
   };
 
   return (
-    <div className="flex h-[calc(100vh-64px)] bg-gray-50 overflow-hidden">
+    <div className="flex min-h-[calc(100vh-64px)] bg-gray-900">
       {/* Sidebar */}
-      <Sidebar 
+      <Sidebar
         selectedThreadId={selectedThreadId}
         onThreadSelect={handleThreadSelect}
         onNewChat={handleNewChat}
@@ -71,24 +72,24 @@ export default function HomeContent({ userId, isAuthenticated }: HomeContentProp
         onClose={closeSidebar}
         isAuthenticated={isAuthenticated}
       />
-      
+
       {/* Main Content */}
       <div className="flex-1 flex flex-col md:ml-0">
         {selectedThreadId ? (
           <ThreadView threadId={selectedThreadId} userId={userId} />
         ) : (
-          <div className="flex-1 overflow-y-auto">
+          <div className="flex-1 py-4 md:py-8">
             <div className="max-w-4xl mx-auto px-4 md:px-6 py-4 md:py-8">
               <header className="mb-6 md:mb-8 text-center">
-                <h1 className="text-2xl md:text-3xl font-bold text-gray-900 mb-2">
+                <h1 className="text-2xl md:text-3xl font-bold text-white mb-2">
                   One to Multi Agent
                 </h1>
-                <p className="text-gray-600 text-sm md:text-base">
+                <p className="text-gray-300 text-sm md:text-base">
                   1つのソースから複数プラットフォーム向けのコンテンツを自動生成
                 </p>
               </header>
 
-              <SourceForm 
+              <SourceForm
                 sourceType={sourceType}
                 setSourceType={setSourceType}
                 content={content}
@@ -98,24 +99,28 @@ export default function HomeContent({ userId, isAuthenticated }: HomeContentProp
                 setTargets={setTargets}
                 isProcessing={isProcessing}
                 handleSubmit={handleSubmit}
+                userId={userId}
+                isAuthenticated={isAuthenticated}
+                tempPrompts={tempPrompts}
+                onTempPromptsChange={setTempPrompts}
               />
 
               {isProcessing && !results && (
                 <div className="mt-4 md:mt-6 text-center">
-                  <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto"></div>
-                  <p className="mt-2 text-blue-800 text-sm md:text-base">コンテンツを処理中です...</p>
+                  <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-400 mx-auto"></div>
+                  <p className="mt-2 text-blue-300 text-sm md:text-base">コンテンツを処理中です...</p>
                 </div>
               )}
 
               {error && (
-                <div className="mt-4 md:mt-6 bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded relative text-sm md:text-base">
+                <div className="mt-4 md:mt-6 bg-red-900 border border-red-700 text-red-300 px-4 py-3 rounded relative text-sm md:text-base">
                   <strong>エラー:</strong> {error}
                 </div>
               )}
 
-              <ResultsDisplay 
-                results={results} 
-                editableContent={editableContent} 
+              <ResultsDisplay
+                results={results}
+                editableContent={editableContent}
                 updateEditableContent={updateEditableContent}
                 handlePublish={handlePublish}
               />

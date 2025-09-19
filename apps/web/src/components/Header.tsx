@@ -3,6 +3,7 @@ import Image from "next/image";
 import { SignInButton } from "./SignInButton";
 import { SignOutButton } from "./SignOutButton";
 import { HeaderMenuButton } from "./HeaderMenuButton";
+import { PromptSettingsMenu } from "./PromptSettingsMenu";
 
 export async function Header() {
   const session = await auth();
@@ -17,25 +18,30 @@ export async function Header() {
           </h1>
         </div>
 
-        {session?.user ? (
-          <div className="flex items-center gap-3">
-            {session.user.image && (
-              <Image
-                src={session.user.image}
-                alt={session.user.name || "User"}
-                width={32}
-                height={32}
-                className="rounded-full"
-              />
-            )}
-            <span className="text-sm text-gray-700 hidden md:inline">
-              {session.user.name}
-            </span>
-            <SignOutButton />
-          </div>
-        ) : (
-          <SignInButton />
-        )}
+        <div className="flex items-center gap-3">
+          {/* テスト用：認証状態に関係なくプロンプト設定を表示 */}
+          <PromptSettingsMenu />
+
+          {session?.user ? (
+            <>
+              {session.user.image && (
+                <Image
+                  src={session.user.image}
+                  alt={session.user.name || "User"}
+                  width={32}
+                  height={32}
+                  className="rounded-full"
+                />
+              )}
+              <span className="text-sm text-gray-700 hidden md:inline">
+                {session.user.name}
+              </span>
+              <SignOutButton />
+            </>
+          ) : (
+            <SignInButton />
+          )}
+        </div>
       </div>
     </div>
   );

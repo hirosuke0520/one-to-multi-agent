@@ -160,4 +160,40 @@ app.delete('/', async (c) => {
   }
 });
 
+// 統合プロンプト（グローバル + プラットフォーム固有）を取得
+app.get('/combined', async (c) => {
+  try {
+    const userId = c.get('userId') as string;
+    const combinedPrompts = await promptService.getCombinedPrompts(userId);
+
+    return c.json({ prompts: combinedPrompts });
+  } catch (error) {
+    console.error('Error fetching combined prompts:', error);
+    return c.json({ error: 'Failed to fetch combined prompts' }, 500);
+  }
+});
+
+// 特定プラットフォームの統合プロンプトを取得
+app.get('/combined/:platform', async (c) => {
+  try {
+    const userId = c.get('userId') as string;
+    const platform = c.req.param('platform') as Platform;
+
+    const validPlatforms: Platform[] = ['twitter', 'instagram', 'tiktok', 'threads', 'youtube', 'blog'];
+    if (!validPlatforms.includes(platform)) {
+      return c.json({ error: 'Invalid platform' }, 400);
+    }
+
+    const combinedPrompt = await promptService.getCombinedPrompt(userId, platform);
+
+    return c.json({
+      platform,
+      combinedPrompt
+    });
+  } catch (error) {
+    console.error('Error fetching combined prompt:', error);
+    return c.json({ error: 'Failed to fetch combined prompt' }, 500);
+  }
+});
+
 export default app;
