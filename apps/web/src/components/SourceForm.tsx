@@ -1,6 +1,7 @@
 "use client";
 
 import { ChangeEvent, FormEvent, useState } from "react";
+import { useSession } from 'next-auth/react';
 import { TempPromptModal } from "./TempPromptModal";
 
 interface SourceFormProps {
@@ -43,23 +44,8 @@ export const SourceForm = ({
   tempPrompts = {},
   onTempPromptsChange,
 }: SourceFormProps) => {
+  const { data: session } = useSession();
   const [isPromptModalOpen, setIsPromptModalOpen] = useState(false);
-  const [token, setToken] = useState('');
-
-  // トークンを取得（簡易的な実装）
-  const getAuthToken = () => {
-    if (typeof window !== 'undefined') {
-      // クッキーからトークンを取得する簡易実装
-      const cookies = document.cookie.split(';');
-      for (const cookie of cookies) {
-        const [name, value] = cookie.trim().split('=');
-        if (name === 'authjs.session-token' || name === '__Secure-authjs.session-token') {
-          return value;
-        }
-      }
-    }
-    return '';
-  };
 
   const handleFileChange = (e: ChangeEvent<HTMLInputElement>) => {
     setFile(e.target.files?.[0] || null);
@@ -135,11 +121,10 @@ export const SourceForm = ({
       <div className="bg-gray-800 border border-gray-700 rounded-lg shadow p-6">
         <div className="flex items-center justify-between mb-4">
           <h2 className="text-xl font-semibold text-white">3. 投稿先を選択</h2>
-          {targets.length > 0 && (
+          {targets.length > 0 && session?.user?.id && (
             <button
               type="button"
               onClick={() => {
-                setToken(getAuthToken());
                 setIsPromptModalOpen(true);
               }}
               className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-white bg-green-600 hover:bg-green-700 rounded-lg transition-colors shadow-sm"
@@ -212,18 +197,20 @@ export const SourceForm = ({
       </div>
 
       {/* 一時プロンプト設定モーダル */}
-      <TempPromptModal
-        isOpen={isPromptModalOpen}
-        onClose={() => setIsPromptModalOpen(false)}
-        selectedPlatforms={targets}
-        onSavePrompts={(prompts) => {
-          if (onTempPromptsChange) {
-            onTempPromptsChange(prompts);
-          }
-        }}
-        initialPrompts={tempPrompts}
-        token={token}
-      />
+      {session?.user?.id && (
+        <TempPromptModal
+          isOpen={isPromptModalOpen}
+          onClose={() => setIsPromptModalOpen(false)}
+          selectedPlatforms={targets}
+          onSavePrompts={(prompts) => {
+            if (onTempPromptsChange) {
+              onTempPromptsChange(prompts);
+            }
+          }}
+          initialPrompts={tempPrompts}
+          token={session.user.id}
+        />
+      )}
     </form>
   );
 };

@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState, useEffect } from 'react';
+import { useSession } from 'next-auth/react';
 import { getApiUrl } from '../lib/config';
 import { PlatformContent as CorePlatformContent } from '@one-to-multi-agent/core';
 import { PlatformCard } from './PlatformCard';
@@ -50,12 +51,12 @@ interface ThreadViewProps {
 }
 
 export function ThreadView({ threadId, userId }: ThreadViewProps) {
+  const { data: session } = useSession();
   const [thread, setThread] = useState<ContentMetadata | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [editableContent, setEditableContent] = useState<Record<string, Partial<CorePlatformContent>>>({});
   const [isPromptModalOpen, setIsPromptModalOpen] = useState(false);
-  const [token, setToken] = useState('');
 
   const fetchThread = async () => {
     setLoading(true);
@@ -132,20 +133,6 @@ export function ThreadView({ threadId, userId }: ThreadViewProps) {
     return `${(bytes / (1024 * 1024)).toFixed(1)}MB`;
   };
 
-  // トークンを取得（簡易的な実装）
-  const getAuthToken = () => {
-    if (typeof window !== 'undefined') {
-      // クッキーからトークンを取得する簡易実装
-      const cookies = document.cookie.split(';');
-      for (const cookie of cookies) {
-        const [name, value] = cookie.trim().split('=');
-        if (name === 'authjs.session-token' || name === '__Secure-authjs.session-token') {
-          return value;
-        }
-      }
-    }
-    return '';
-  };
 
   const getSourceTypeDisplay = (sourceType: string) => {
     switch (sourceType) {
@@ -333,10 +320,9 @@ export function ThreadView({ threadId, userId }: ThreadViewProps) {
         <div className="mt-6 md:mt-8 space-y-4 md:space-y-6">
           <div className="flex items-center justify-between">
             <h2 className="text-xl md:text-2xl font-bold text-white">生成結果</h2>
-            {userId && (
+            {userId && session?.user?.id && (
               <button
                 onClick={() => {
-                  setToken(getAuthToken());
                   setIsPromptModalOpen(true);
                 }}
                 className="flex items-center gap-2 px-3 py-2 text-sm bg-blue-900 text-blue-300 rounded-lg hover:bg-blue-800 transition-colors"
@@ -370,13 +356,13 @@ export function ThreadView({ threadId, userId }: ThreadViewProps) {
         </div>
 
         {/* 履歴プロンプト表示モーダル */}
-        {userId && (
+        {userId && session?.user?.id && (
           <HistoryPromptModal
             isOpen={isPromptModalOpen}
             onClose={() => setIsPromptModalOpen(false)}
             threadId={threadId}
             platforms={thread.generatedContent.map(content => content.platform)}
-            token={token}
+            token={session.user.id}
           />
         )}
       </div>
