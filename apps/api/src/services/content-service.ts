@@ -1,3 +1,6 @@
+import { config } from "dotenv";
+config({ path: "../../../.env" });
+
 import { v4 as uuidv4 } from "uuid";
 import { CanonicalContent, ProcessJobRequest } from "./orchestrator-service.js";
 import { RealAIService } from "./real-ai-service.js";
@@ -57,14 +60,16 @@ export class ContentService {
   async generatePlatformContent(
     source: ContentSource,
     platform: string,
-    profile?: ProcessJobRequest["profile"]
+    profile?: ProcessJobRequest["profile"],
+    customPrompt?: string
   ): Promise<ContentServicePlatformContent> {
     console.log(`Generating ${platform} content...`);
 
     const aiGenerated = await this.aiService.generatePlatformContent(
       source,
       platform,
-      profile
+      profile,
+      customPrompt
     );
 
     const platformContent: ContentServicePlatformContent = {

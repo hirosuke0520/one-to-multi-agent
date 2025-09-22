@@ -16,6 +16,7 @@ interface HistoryPrompt {
   globalCharacterPrompt?: string;
   platformPrompt?: string;
   combinedPrompt?: string;
+  customPrompt?: string;
 }
 
 const platformLabels: Record<string, string> = {
@@ -73,6 +74,9 @@ export function HistoryPromptModal({
         }
       } else {
         const data = await response.json();
+        if (data.success === false) {
+          throw new Error(data.error || 'Failed to fetch history prompts');
+        }
         setPrompts(data.prompts || []);
       }
     } catch (error) {
@@ -207,6 +211,31 @@ export function HistoryPromptModal({
                             </div>
                             <textarea
                               value={promptData.platformPrompt}
+                              readOnly
+                              className="w-full px-3 py-2 border border-gray-300 rounded-lg bg-gray-50 resize-none focus:outline-none"
+                              rows={3}
+                            />
+                          </div>
+                        )}
+
+                        {promptData.customPrompt && (
+                          <div>
+                            <div className="flex items-center justify-between mb-2">
+                              <label className="block text-sm font-medium text-gray-700">
+                                一時プロンプト
+                              </label>
+                              <button
+                                onClick={() => copyToClipboard(promptData.customPrompt!, '一時プロンプト')}
+                                className="text-sm text-blue-600 hover:text-blue-800 flex items-center gap-1"
+                              >
+                                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
+                                </svg>
+                                コピー
+                              </button>
+                            </div>
+                            <textarea
+                              value={promptData.customPrompt}
                               readOnly
                               className="w-full px-3 py-2 border border-gray-300 rounded-lg bg-gray-50 resize-none focus:outline-none"
                               rows={3}

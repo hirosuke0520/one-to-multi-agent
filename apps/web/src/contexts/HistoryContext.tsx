@@ -46,25 +46,34 @@ export function HistoryProvider({ children, userId, isAuthenticated }: HistoryPr
 
   const fetchHistory = useCallback(async () => {
     if (isLoading) return;
-    
+
     // ログインしていない場合は履歴を取得しない
     if (!userId) {
       setHistory([]);
       return;
     }
-    
+
+
     setIsLoading(true);
     setError(null);
 
     try {
-      const url = `${getApiUrl()}/history?userId=${encodeURIComponent(userId)}`;
-      
+      const url = `${getApiUrl()}/history`;
+
+      // タイムアウト用のAbortController
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 5000); // 5秒でタイムアウト
+
       const response = await fetch(url, {
         method: 'GET',
         headers: {
           'Content-Type': 'application/json',
+          'Authorization': `Bearer ${userId}`,
         },
+        signal: controller.signal,
       });
+
+      clearTimeout(timeoutId);
 
       if (!response.ok) {
         throw new Error('Failed to fetch history');
@@ -73,8 +82,14 @@ export function HistoryProvider({ children, userId, isAuthenticated }: HistoryPr
       const data = await response.json();
       setHistory(data.data || []);
     } catch (err) {
-      console.error('Failed to fetch history:', err);
-      setError(err instanceof Error ? err.message : 'Failed to fetch history');
+      // AbortErrorの場合はログを出力しない（タイムアウト時の正常な動作）
+      if (err instanceof Error && err.name !== 'AbortError') {
+        console.error('Failed to fetch history:', err);
+      }
+      // APIサーバーに接続できない場合は、エラーを表示せず空の履歴を設定
+      // 開発環境での使いやすさを向上させるため
+      setError(null);
+      setHistory([]);
     } finally {
       setIsLoading(false);
     }
@@ -86,20 +101,29 @@ export function HistoryProvider({ children, userId, isAuthenticated }: HistoryPr
       setHistory([]);
       return;
     }
-    
+
+
     // Force refresh without checking isLoading
     setIsLoading(true);
     setError(null);
 
     try {
-      const url = `${getApiUrl()}/history?userId=${encodeURIComponent(userId)}`;
-      
+      const url = `${getApiUrl()}/history`;
+
+      // タイムアウト用のAbortController
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 5000); // 5秒でタイムアウト
+
       const response = await fetch(url, {
         method: 'GET',
         headers: {
           'Content-Type': 'application/json',
+          'Authorization': `Bearer ${userId}`,
         },
+        signal: controller.signal,
       });
+
+      clearTimeout(timeoutId);
 
       if (!response.ok) {
         throw new Error('Failed to fetch history');
@@ -108,8 +132,13 @@ export function HistoryProvider({ children, userId, isAuthenticated }: HistoryPr
       const data = await response.json();
       setHistory(data.data || []);
     } catch (err) {
-      console.error('Failed to refresh history:', err);
-      setError(err instanceof Error ? err.message : 'Failed to fetch history');
+      // AbortErrorの場合はログを出力しない（タイムアウト時の正常な動作）
+      if (err instanceof Error && err.name !== 'AbortError') {
+        console.error('Failed to refresh history:', err);
+      }
+      // APIサーバーに接続できない場合は、エラーを表示せず空の履歴を設定
+      setError(null);
+      setHistory([]);
     } finally {
       setIsLoading(false);
     }

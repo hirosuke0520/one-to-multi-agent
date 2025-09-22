@@ -13,7 +13,7 @@ interface SourceFormProps {
   targets: string[];
   setTargets: (value: string[]) => void;
   isProcessing: boolean;
-  handleSubmit: (e: FormEvent) => void;
+  handleSubmit: (e: FormEvent, customPrompts?: Record<string, string>) => void;
   userId?: string;
   isAuthenticated?: boolean;
   tempPrompts?: Record<string, string>;
@@ -47,6 +47,8 @@ export const SourceForm = ({
   const { data: session } = useSession();
   const [isPromptModalOpen, setIsPromptModalOpen] = useState(false);
 
+  const normalizePlatformId = (platform: string) => (platform === 'wordpress' ? 'blog' : platform);
+
   const handleFileChange = (e: ChangeEvent<HTMLInputElement>) => {
     setFile(e.target.files?.[0] || null);
   };
@@ -60,7 +62,10 @@ export const SourceForm = ({
   };
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-6">
+    <form
+      onSubmit={(e) => handleSubmit(e, tempPrompts)}
+      className="space-y-6"
+    >
       <div className="bg-gray-800 border border-gray-700 rounded-lg shadow p-6">
         <h2 className="text-xl font-semibold mb-4 text-white">1. 入力タイプを選択</h2>
         <div className="flex space-x-4">
@@ -169,7 +174,7 @@ export const SourceForm = ({
                 className="sr-only"
               />
               <span className="font-medium text-white">{platform.name}</span>
-              {tempPrompts[platform.id] && (
+              {(tempPrompts[platform.id] || tempPrompts[normalizePlatformId(platform.id)]) && (
                 <div className="mt-2">
                   <span className="inline-block px-2 py-1 text-xs bg-yellow-600 text-yellow-100 rounded">
                     カスタムプロンプト設定済み

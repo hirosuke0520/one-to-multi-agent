@@ -39,7 +39,6 @@ export default function HomeContent({ userId, isAuthenticated }: HomeContentProp
     editableContent,
     error,
     handleSubmit,
-    handlePublish,
     updateEditableContent,
     resetForm,
   } = useContentGenerator(userId);
@@ -47,6 +46,7 @@ export default function HomeContent({ userId, isAuthenticated }: HomeContentProp
   const handleNewChat = () => {
     setSelectedThreadId(null);
     resetForm();
+    setTempPrompts({});
     router.push('/');
     closeSidebar(); // Close mobile sidebar
   };
@@ -102,7 +102,9 @@ export default function HomeContent({ userId, isAuthenticated }: HomeContentProp
                 userId={userId}
                 isAuthenticated={isAuthenticated}
                 tempPrompts={tempPrompts}
-                onTempPromptsChange={setTempPrompts}
+                onTempPromptsChange={(prompts) =>
+                  setTempPrompts((prev) => ({ ...prev, ...prompts }))
+                }
               />
 
               {isProcessing && !results && (
@@ -122,7 +124,6 @@ export default function HomeContent({ userId, isAuthenticated }: HomeContentProp
                 results={results}
                 editableContent={editableContent}
                 updateEditableContent={updateEditableContent}
-                handlePublish={handlePublish}
               />
             </div>
           </div>

@@ -2,6 +2,25 @@
 
 🚀 **コンテンツ発信者が1つのソース（動画/文章/音声）から、各プラットフォームの文脈・制約・アルゴリズムに最適化した派生コンテンツを半自動生成し、最小の手間で公開まで到達できるワークフローを提供するサービス。**
 
+## 🤝 共同作業者向けクイックスタート
+
+```bash
+# 1. リポジトリクローン後、自動セットアップを実行
+./scripts/setup-collaborator.sh
+
+# 2. 問題がある場合はデバッグツールを実行
+./scripts/debug-auth.sh
+
+# 3. 詳細なセットアップ手順
+# SETUP-COLLABORATORS.md を参照
+```
+
+**必須環境変数** (詳細は `.env.example` を参照):
+- `AUTH_GOOGLE_ID` / `AUTH_GOOGLE_SECRET` - Google OAuth
+- `AUTH_SECRET` - NextAuth secret
+- `NEXT_PUBLIC_API_URL` - API エンドポイント
+- `DATABASE_URL` - PostgreSQL 接続情報
+
 ## ✨ 主な機能
 
 - 📝 **文章/音声/動画からの自動コンテンツ生成**

@@ -99,6 +99,13 @@ export class RealAIService {
     }
   }
 
+  private appendCustomInstructions(basePrompt: string, customPrompt?: string): string {
+    if (!customPrompt || customPrompt.trim().length === 0) {
+      return basePrompt;
+    }
+    return `${basePrompt}\n\n【追加指示】\n${customPrompt}`;
+  }
+
   // === PUBLIC METHODS ===
 
   async generateCanonicalContent(
@@ -154,29 +161,30 @@ ${typeof source === 'string' ? source : '添付ファイルを参照'}
   async generatePlatformContent(
     source: ContentSource,
     platform: string,
-    profile?: any
+    profile?: any,
+    customPrompt?: string
   ): Promise<PlatformContent> {
     switch (platform) {
       case "threads":
-        return this.generateThreadsContent(source, profile);
+        return this.generateThreadsContent(source, profile, customPrompt);
       case "twitter":
-        return this.generateTwitterContent(source, profile);
+        return this.generateTwitterContent(source, profile, customPrompt);
       case "youtube":
-        return this.generateYouTubeContent(source, profile);
+        return this.generateYouTubeContent(source, profile, customPrompt);
       case "wordpress":
-        return this.generateWordPressContent(source, profile);
+        return this.generateWordPressContent(source, profile, customPrompt);
       case "instagram":
-        return this.generateInstagramContent(source, profile);
+        return this.generateInstagramContent(source, profile, customPrompt);
       case "tiktok":
-        return this.generateTikTokContent(source, profile);
+        return this.generateTikTokContent(source, profile, customPrompt);
       default:
-        return this.generateThreadsContent(source, profile); // Default to Threads
+        return this.generateThreadsContent(source, profile, customPrompt); // Default to Threads
     }
   }
 
   // === PRIVATE PLATFORM-SPECIFIC METHODS ===
 
-  private async generateThreadsContent(source: ContentSource, profile?: any): Promise<ThreadsContent> {
+  private async generateThreadsContent(source: ContentSource, profile?: any, customPrompt?: string): Promise<ThreadsContent> {
     const prompt = `あなたはThreadsコミュニティマネージャーです。以下の${typeof source === 'string' ? '文章' : 'メディア'}を基に、親しみやすく会話的な投稿を作成してください。
 
 【元コンテンツ】
@@ -189,10 +197,12 @@ ${typeof source === 'string' ? source : '添付ファイルを参照'}
 }
 JSON形式のみで回答してください。`;
 
+    const finalPrompt = this.appendCustomInstructions(prompt, customPrompt);
+
     try {
       const parsed = typeof source === 'string'
-        ? await this.generateFromText(prompt)
-        : await this.generateFromFile(prompt, source);
+        ? await this.generateFromText(finalPrompt)
+        : await this.generateFromFile(finalPrompt, source);
       
       return { 
         platform: "threads", 
@@ -209,7 +219,7 @@ JSON形式のみで回答してください。`;
     }
   }
 
-  private async generateTwitterContent(source: ContentSource, profile?: any): Promise<TwitterContent> {
+  private async generateTwitterContent(source: ContentSource, profile?: any, customPrompt?: string): Promise<TwitterContent> {
     const prompt = `あなたはTwitterマーケティングの専門家です。以下の${typeof source === 'string' ? '文章' : 'メディア'}を基に、140文字以内で読者を惹きつけるツイートを作成してください。
 
 【元コンテンツ】
@@ -222,10 +232,12 @@ ${typeof source === 'string' ? source : '添付ファイルを参照'}
 }
 JSON形式のみで回答してください。`;
 
+    const finalPrompt = this.appendCustomInstructions(prompt, customPrompt);
+
     try {
       const parsed = typeof source === 'string'
-        ? await this.generateFromText(prompt)
-        : await this.generateFromFile(prompt, source);
+        ? await this.generateFromText(finalPrompt)
+        : await this.generateFromFile(finalPrompt, source);
       
       let tweetText = parsed.text || "Twitterコンテンツの生成に失敗しました。";
       if (tweetText.length > 140) {
@@ -246,7 +258,7 @@ JSON形式のみで回答してください。`;
     }
   }
 
-  private async generateYouTubeContent(source: ContentSource, profile?: any): Promise<YouTubeContent> {
+  private async generateYouTubeContent(source: ContentSource, profile?: any, customPrompt?: string): Promise<YouTubeContent> {
     const prompt = `あなたはYouTubeクリエイターです。以下の${typeof source === 'string' ? '文章' : 'メディア'}を基に、視聴者維持率と検索性を最大化する動画のメタデータを作成してください。
 
 【元コンテンツ】
@@ -262,10 +274,12 @@ ${typeof source === 'string' ? source : '添付ファイルを参照'}
 }
 JSON形式のみで回答してください。`;
 
+    const finalPrompt = this.appendCustomInstructions(prompt, customPrompt);
+
     try {
       const parsed = typeof source === 'string'
-        ? await this.generateFromText(prompt)
-        : await this.generateFromFile(prompt, source);
+        ? await this.generateFromText(finalPrompt)
+        : await this.generateFromFile(finalPrompt, source);
       
       return { 
         platform: "youtube", 
@@ -287,7 +301,7 @@ JSON形式のみで回答してください。`;
     }
   }
 
-  private async generateWordPressContent(source: ContentSource, profile?: any): Promise<WordPressContent> {
+  private async generateWordPressContent(source: ContentSource, profile?: any, customPrompt?: string): Promise<WordPressContent> {
     const prompt = `あなたはWordPressブログの編集者です。以下の${typeof source === 'string' ? '文章' : 'メディア'}を基に、SEOを意識したブログ記事を作成してください。
 
 【元コンテンツ】
@@ -305,10 +319,12 @@ ${typeof source === 'string' ? source : '添付ファイルを参照'}
 }
 JSON形式のみで回答してください。`;
 
+    const finalPrompt = this.appendCustomInstructions(prompt, customPrompt);
+
     try {
       const parsed = typeof source === 'string'
-        ? await this.generateFromText(prompt)
-        : await this.generateFromFile(prompt, source);
+        ? await this.generateFromText(finalPrompt)
+        : await this.generateFromFile(finalPrompt, source);
       
       return { 
         platform: "wordpress",
@@ -333,7 +349,7 @@ JSON形式のみで回答してください。`;
     }
   }
 
-  private async generateInstagramContent(source: ContentSource, profile?: any): Promise<InstagramContent> {
+  private async generateInstagramContent(source: ContentSource, profile?: any, customPrompt?: string): Promise<InstagramContent> {
     const prompt = `あなたはInstagramマーケティングの専門家です。以下の${typeof source === 'string' ? '文章' : 'メディア'}を基に、ビジュアルを重視した投稿を作成してください。
 
 【元コンテンツ】
@@ -347,10 +363,12 @@ ${typeof source === 'string' ? source : '添付ファイルを参照'}
 }
 JSON形式のみで回答してください。`;
 
+    const finalPrompt = this.appendCustomInstructions(prompt, customPrompt);
+
     try {
       const parsed = typeof source === 'string'
-        ? await this.generateFromText(prompt)
-        : await this.generateFromFile(prompt, source);
+        ? await this.generateFromText(finalPrompt)
+        : await this.generateFromFile(finalPrompt, source);
       
       return { 
         platform: "instagram",
@@ -369,7 +387,7 @@ JSON形式のみで回答してください。`;
     }
   }
 
-  private async generateTikTokContent(source: ContentSource, profile?: any): Promise<TikTokContent> {
+  private async generateTikTokContent(source: ContentSource, profile?: any, customPrompt?: string): Promise<TikTokContent> {
     const prompt = `あなたはTikTokクリエイターです。以下の${typeof source === 'string' ? '文章' : 'メディア'}を基に、バイラルを意識したキャプションを作成してください。
 
 【元コンテンツ】
@@ -383,10 +401,12 @@ ${typeof source === 'string' ? source : '添付ファイルを参照'}
 }
 JSON形式のみで回答してください。`;
 
+    const finalPrompt = this.appendCustomInstructions(prompt, customPrompt);
+
     try {
       const parsed = typeof source === 'string'
-        ? await this.generateFromText(prompt)
-        : await this.generateFromFile(prompt, source);
+        ? await this.generateFromText(finalPrompt)
+        : await this.generateFromFile(finalPrompt, source);
       
       return { 
         platform: "tiktok",

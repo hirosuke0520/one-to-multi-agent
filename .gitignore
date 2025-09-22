@@ -63,6 +63,12 @@ jspm_packages/
 /data/
 /uploads/
 /temp/
+apps/api/data/
+apps/api/temp/
+apps/api/storage/
+apps/api/apps/
+*.sqlite-shm
+*.sqlite-wal
 
 # GCP credentials
 gcp-key.json

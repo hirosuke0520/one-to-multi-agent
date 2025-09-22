@@ -9,6 +9,8 @@ import { MetadataServiceSQL, ContentMetadata, PlatformContent } from "./metadata
 import { PreviewService } from "./preview-service.js";
 import { VideoConverterService } from "./video-converter-service.js";
 import { ContentSource } from "@one-to-multi-agent/core";
+import { PromptService, Platform as PromptPlatform } from "./prompt-service.js";
+import { UserSettingsService } from "./user-settings-service.js";
 
 export interface ProcessJobRequest {
   sourceType: "text" | "audio" | "video";
@@ -25,6 +27,7 @@ export interface ProcessJobRequest {
     purpose?: string;
     cta?: string;
   };
+  customPrompts?: Record<string, string>;
 }
 
 export interface Job {
@@ -53,6 +56,15 @@ export interface CanonicalContent {
   };
 }
 
+interface PromptDetail {
+  normalizedPlatform: PromptPlatform;
+  globalCharacterPrompt: string;
+  platformPrompt: string;
+  combinedPrompt: string;
+  customPrompt?: string;
+  finalPrompt: string;
+}
+
 export class OrchestratorService {
   private jobService: JobService;
   private transcriberService: TranscriberService;
@@ -62,6 +74,8 @@ export class OrchestratorService {
   private metadataService: MetadataServiceSQL;
   private previewService: PreviewService;
   private videoConverterService: VideoConverterService;
+  private promptService: PromptService;
+  private userSettingsService: UserSettingsService;
   private initialized: Promise<void>;
 
   constructor() {
@@ -72,6 +86,8 @@ export class OrchestratorService {
     this.metadataService = new MetadataServiceSQL();
     this.previewService = new PreviewService();
     this.videoConverterService = new VideoConverterService();
+    this.promptService = new PromptService();
+    this.userSettingsService = new UserSettingsService();
     this.initialized = this.initializeStorage();
   }
 
@@ -247,13 +263,16 @@ export class OrchestratorService {
         throw new Error("No target platforms specified");
       }
 
+      const promptDetails = await this.preparePromptDetails(targets, request.userId, request.customPrompts);
+
       const platformResults = await Promise.allSettled(
         targets.map(async (target) => {
           try {
             const platformContent = await this.contentService.generatePlatformContent(
               sourceContent,
               target,
-              request.profile
+              request.profile,
+              promptDetails[target]?.finalPrompt
             );
             return {
               platform: target,
@@ -294,7 +313,7 @@ export class OrchestratorService {
       });
 
       // Step 4: Save metadata and generate preview (for history tracking)
-      await this.saveContentMetadata(jobId, request, resolvedPlatformResults, sourceContent);
+      await this.saveContentMetadata(jobId, request, resolvedPlatformResults, sourceContent, promptDetails);
 
       await this.updateJobStatus(jobId, "completed");
       
@@ -328,7 +347,8 @@ export class OrchestratorService {
     jobId: string,
     request: ProcessJobRequest,
     platformResults: Array<{ platform: string; success: boolean; content?: any; error?: string }>,
-    sourceContent: ContentSource
+    sourceContent: ContentSource,
+    promptDetails: Record<string, PromptDetail>
   ): Promise<void> {
     try {
       const metadata: ContentMetadata = {
@@ -337,6 +357,7 @@ export class OrchestratorService {
         userId: request.userId,
         createdAt: new Date().toISOString(),
         generatedContent: [],
+        usedPrompts: {},
       };
 
       // Save source content based on type
@@ -404,6 +425,25 @@ export class OrchestratorService {
           };
         });
 
+      // Attach prompt details for successful platforms
+      for (const result of platformResults) {
+        if (!result.success) {
+          continue;
+        }
+        const details = promptDetails[result.platform];
+        if (details) {
+          metadata.usedPrompts = metadata.usedPrompts || {};
+          metadata.usedPrompts[result.platform] = {
+            normalizedPlatform: details.normalizedPlatform,
+            globalCharacterPrompt: details.globalCharacterPrompt,
+            platformPrompt: details.platformPrompt,
+            combinedPrompt: details.combinedPrompt,
+            customPrompt: details.customPrompt,
+            finalPrompt: details.finalPrompt,
+          };
+        }
+      }
+
       // Save metadata to database
       await this.metadataService.saveMetadata(metadata);
       console.log(`Metadata saved for job ${jobId}: ${metadata.id}`);
@@ -434,8 +474,109 @@ export class OrchestratorService {
     }
   }
 
+  private normalizePlatform(platform: string): PromptPlatform | undefined {
+    if (!platform) {
+      return undefined;
+    }
+
+    const lower = platform.toLowerCase();
+    if (lower === 'wordpress') {
+      return 'blog';
+    }
+
+    const validPlatforms: PromptPlatform[] = ['twitter', 'instagram', 'tiktok', 'threads', 'youtube', 'blog'];
+    return validPlatforms.includes(lower as PromptPlatform) ? (lower as PromptPlatform) : undefined;
+  }
+
+  private async preparePromptDetails(
+    targets: string[],
+    userId?: string,
+    customPrompts?: Record<string, string>
+  ): Promise<Record<string, PromptDetail>> {
+    const details: Record<string, PromptDetail> = {};
+    const normalizedCustomPrompts: Record<string, string> = {};
+
+    if (customPrompts) {
+      for (const [platform, prompt] of Object.entries(customPrompts)) {
+        if (typeof prompt !== 'string') {
+          continue;
+        }
+        const trimmed = prompt.trim();
+        if (!trimmed) {
+          continue;
+        }
+        const normalized = this.normalizePlatform(platform) || this.normalizePlatform(platform.toLowerCase());
+        if (normalized) {
+          normalizedCustomPrompts[normalized] = trimmed;
+        }
+      }
+    }
+
+    const defaultGlobalPrompt = this.userSettingsService.getDefaultGlobalCharacterPrompt();
+    let globalPrompt = defaultGlobalPrompt;
+    if (userId) {
+      const savedGlobal = await this.userSettingsService.getGlobalCharacterPrompt(userId);
+      if (savedGlobal && savedGlobal.trim().length > 0) {
+        globalPrompt = savedGlobal;
+      }
+    }
+
+    const defaultPlatformPrompts = this.promptService.getDefaultPrompts();
+    const processedTargets = new Set<string>();
+
+    for (const target of targets) {
+      if (!target || processedTargets.has(target)) {
+        continue;
+      }
+      processedTargets.add(target);
+
+      const normalized = this.normalizePlatform(target);
+      if (!normalized) {
+        continue;
+      }
+
+      let platformPrompt = defaultPlatformPrompts[normalized];
+      if (userId) {
+        const savedPrompt = await this.promptService.getPromptByPlatform(userId, normalized);
+        if (savedPrompt?.prompt && savedPrompt.prompt.trim().length > 0) {
+          platformPrompt = savedPrompt.prompt;
+        }
+      }
+
+      const combinedPrompt = `${globalPrompt}\n\n${platformPrompt}`;
+      const customPrompt = normalizedCustomPrompts[normalized];
+      const finalPrompt = customPrompt
+        ? `${combinedPrompt}\n\n追加指示:\n${customPrompt}`
+        : combinedPrompt;
+
+      details[target] = {
+        normalizedPlatform: normalized,
+        globalCharacterPrompt: globalPrompt,
+        platformPrompt,
+        combinedPrompt,
+        customPrompt,
+        finalPrompt,
+      };
+    }
+
+    return details;
+  }
+
   // New method for getting content history
   async getContentHistory(userId?: string, limit = 20): Promise<ContentMetadata[]> {
     return await this.metadataService.listMetadata(userId, limit);
+  }
+
+  async getContentMetadata(id: string, userId?: string): Promise<ContentMetadata | null> {
+    const metadata = await this.metadataService.getMetadata(id);
+    if (!metadata) {
+      return null;
+    }
+
+    if (userId && metadata.userId && metadata.userId !== userId) {
+      return null;
+    }
+
+    return metadata;
   }
 }

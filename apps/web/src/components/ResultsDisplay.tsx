@@ -8,10 +8,9 @@ interface ResultsDisplayProps {
   results: JobResults | null;
   editableContent: Record<string, Partial<PlatformContent>>;
   updateEditableContent: (platform: string, field: string, value: string | string[]) => void;
-  handlePublish: (platform: string) => void;
 }
 
-export const ResultsDisplay = ({ results, editableContent, updateEditableContent, handlePublish }: ResultsDisplayProps) => {
+export const ResultsDisplay = ({ results, editableContent, updateEditableContent }: ResultsDisplayProps) => {
   if (!results) return null;
 
   return (
@@ -23,7 +22,6 @@ export const ResultsDisplay = ({ results, editableContent, updateEditableContent
           result={result} 
           editableContent={editableContent[result.platform]} 
           updateEditableContent={updateEditableContent}
-          handlePublish={handlePublish}
         />
       ))}
     </div>

@@ -63,14 +63,18 @@ export function ThreadView({ threadId, userId }: ThreadViewProps) {
     setError(null);
     
     try {
-      const url = userId 
-        ? `${getApiUrl()}/history?userId=${encodeURIComponent(userId)}`
-        : `${getApiUrl()}/history`;
-        
+      const token = session?.user?.id || userId;
+      if (!token) {
+        throw new Error('ユーザー情報が見つかりません。再ログインしてください。');
+      }
+
+      const url = `${getApiUrl()}/history`;
+      
       const response = await fetch(url, {
         method: 'GET',
         headers: {
           'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`,
         },
       });
 
@@ -115,7 +119,7 @@ export function ThreadView({ threadId, userId }: ThreadViewProps) {
   useEffect(() => {
     fetchThread();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [threadId, userId]);
+  }, [threadId, userId, session?.user?.id]);
 
   const formatDate = (dateString: string) => {
     return new Date(dateString).toLocaleString('ja-JP');
@@ -149,10 +153,6 @@ export function ThreadView({ threadId, userId }: ThreadViewProps) {
       ...prev,
       [platform]: { ...prev[platform], [field]: value },
     }));
-  };
-
-  const handlePublish = async (platform: string) => {
-    alert(`Publishing for ${platform}... (Not implemented)`);
   };
 
   // Convert thread data to PlatformResult format for PlatformCard
@@ -350,7 +350,6 @@ export function ThreadView({ threadId, userId }: ThreadViewProps) {
               result={result}
               editableContent={editableContent[result.platform]}
               updateEditableContent={updateEditableContent}
-              handlePublish={handlePublish}
             />
           ))}
         </div>

@@ -2,9 +2,10 @@ import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import Script from "next/script";
 import { auth } from "@/auth";
-import { HistoryProviderWrapper } from "../components/HistoryProviderWrapper";
-import { SidebarProvider } from "../contexts/SidebarContext";
-import { Header } from "../components/Header";
+import { SessionProvider } from "@/components/SessionProvider";
+import { HistoryProviderWrapper } from "@/components/HistoryProviderWrapper";
+import { SidebarProvider } from "@/contexts/SidebarContext";
+import { Header } from "@/components/Header";
 import "./globals.css";
 
 const geistSans = Geist({
@@ -35,15 +36,17 @@ export default async function RootLayout({
         className={`${geistSans.variable} ${geistMono.variable} antialiased min-h-screen`}
       >
         <Script src="/runtime-config.js" strategy="beforeInteractive" />
-        <SidebarProvider>
-          <HistoryProviderWrapper
-            userId={session?.user?.id}
-            isAuthenticated={!!session}
-          >
-            <Header />
-            {children}
-          </HistoryProviderWrapper>
-        </SidebarProvider>
+        <SessionProvider session={session}>
+          <SidebarProvider>
+            <HistoryProviderWrapper
+              userId={session?.user?.id}
+              isAuthenticated={!!session}
+            >
+              <Header />
+              {children}
+            </HistoryProviderWrapper>
+          </SidebarProvider>
+        </SessionProvider>
       </body>
     </html>
   );

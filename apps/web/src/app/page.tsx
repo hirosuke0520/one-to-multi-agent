@@ -1,5 +1,5 @@
 import { Suspense } from 'react';
-import { auth } from '../../auth';
+import { auth } from '@/auth';
 import HomeContent from './HomeContent';
 
 export default async function Home() {

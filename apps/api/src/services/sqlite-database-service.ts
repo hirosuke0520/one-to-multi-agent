@@ -37,10 +37,13 @@ export class SQLiteDatabaseService {
         // Users table
         `CREATE TABLE IF NOT EXISTS users (
           id TEXT PRIMARY KEY,
+          google_id TEXT UNIQUE,
           email TEXT UNIQUE NOT NULL,
           name TEXT,
+          picture TEXT,
           created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-          updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+          updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+          last_login_at DATETIME
         )`,
 
         // User prompts table
@@ -101,10 +104,32 @@ export class SQLiteDatabaseService {
         this.db.exec(schema);
       }
 
+      // Add missing columns when migrating from older schemas
+      this.ensureColumn('users', 'google_id', 'ALTER TABLE users ADD COLUMN google_id TEXT');
+      this.ensureColumn('users', 'picture', 'ALTER TABLE users ADD COLUMN picture TEXT');
+      this.ensureColumn('users', 'last_login_at', 'ALTER TABLE users ADD COLUMN last_login_at DATETIME');
+
+      // Ensure indexes exist for new columns
+      this.db.exec('CREATE UNIQUE INDEX IF NOT EXISTS idx_users_google_id ON users(google_id)');
+      this.db.exec('CREATE UNIQUE INDEX IF NOT EXISTS idx_users_email ON users(email)');
+
       console.log('SQLite database schema initialized successfully');
     } catch (error) {
       console.error('Failed to initialize SQLite schema:', error);
       throw error;
+    }
+  }
+
+  private ensureColumn(table: string, column: string, alterSql: string): void {
+    const columns = this.db.prepare(`PRAGMA table_info(${table})`).all();
+    const exists = columns.some((col: any) => col.name === column);
+
+    if (!exists) {
+      try {
+        this.db.exec(alterSql);
+      } catch (error) {
+        console.error(`Failed to add column ${column} to ${table}:`, error);
+      }
     }
   }
 

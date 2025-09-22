@@ -15,6 +15,7 @@ const processSchema = z.object({
     purpose: z.string().optional(),
     cta: z.string().optional(),
   }).optional(),
+  customPrompts: z.record(z.string(), z.string()).optional(),
 });
 
 orchestrator.post(
@@ -32,6 +33,15 @@ orchestrator.post(
         const profile = JSON.parse(body.get("profile") as string || "{}");
         const userId = body.get("userId") as string | undefined;
         const uploadedFile = body.get("file") as File;
+        const customPromptsRaw = body.get("customPrompts") as string | null;
+        let customPrompts: Record<string, string> | undefined;
+        if (customPromptsRaw) {
+          try {
+            customPrompts = JSON.parse(customPromptsRaw);
+          } catch (parseError) {
+            return c.json({ success: false, error: "Invalid customPrompts payload" }, 400);
+          }
+        }
 
         if (!uploadedFile) {
           return c.json({
@@ -53,6 +63,7 @@ orchestrator.post(
           targets,
           profile,
           userId,
+          customPrompts,
         });
 
         // Start processing the single job (handles all platforms)
@@ -84,7 +95,7 @@ orchestrator.post(
           }, 400);
         }
         
-        const { sourceType, content, targets, profile, userId } = validation.data;
+        const { sourceType, content, targets, profile, userId, customPrompts } = validation.data;
         
         const orchestratorService = new OrchestratorService();
         const { jobs } = await orchestratorService.createJobs({
@@ -93,6 +104,7 @@ orchestrator.post(
           targets,
           profile,
           userId,
+          customPrompts,
         });
 
         // Start processing the single job (handles all platforms)
