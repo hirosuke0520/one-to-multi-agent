@@ -138,13 +138,52 @@ export class UserService {
   }
 
   /**
-   * ユーザーが存在するか確認
+   * ユーザーが存在するか確認（Google IDまたはユーザーIDで）
    */
   async userExists(userId: string): Promise<boolean> {
     const result = await this.pool.query(
-      'SELECT 1 FROM users WHERE id = $1',
+      'SELECT 1 FROM users WHERE id = $1 OR google_id = $1',
       [userId]
     );
     return result.rows.length > 0;
+  }
+
+  /**
+   * ユーザーを作成（認証ミドルウェア用）
+   */
+  async createUser(userData: {
+    googleId: string;
+    email: string;
+    name?: string;
+    picture?: string;
+  }): Promise<boolean> {
+    try {
+      const client = await this.pool.connect();
+      try {
+        // 既に存在するかチェック
+        const existingUser = await client.query(
+          'SELECT 1 FROM users WHERE google_id = $1 OR email = $2',
+          [userData.googleId, userData.email]
+        );
+
+        if (existingUser.rows.length > 0) {
+          return true; // 既に存在する場合は成功とみなす
+        }
+
+        // 新規ユーザーを作成
+        await client.query(
+          `INSERT INTO users (google_id, email, name, picture, last_login_at)
+           VALUES ($1, $2, $3, $4, CURRENT_TIMESTAMP)`,
+          [userData.googleId, userData.email, userData.name || 'Unknown User', userData.picture || '']
+        );
+
+        return true;
+      } finally {
+        client.release();
+      }
+    } catch (error) {
+      console.error('Error creating user:', error);
+      return false;
+    }
   }
 }
