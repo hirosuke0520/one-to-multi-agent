@@ -97,16 +97,16 @@ export class PromptService {
       // Ensure user exists
       await this.ensureUserExists(userId);
 
-      return await databaseService.transaction((client) => {
+      return await databaseService.transaction(async (client) => {
         const savedPrompts: UserPrompt[] = [];
 
         const now = new Date().toISOString();
         for (const { platform, prompt } of prompts) {
           let result;
 
-          // Check if we're using SQLite or PostgreSQL
-          if (client.prepare) {
-            // SQLite
+          // PostgreSQL (we're not using SQLite anymore)
+          if (false && client.prepare) {
+            // SQLite (disabled)
             const stmt = client.prepare(
               `INSERT INTO user_prompts (user_id, platform, prompt, created_at, updated_at)
                VALUES (?, ?, ?, ?, ?)
@@ -124,16 +124,16 @@ export class PromptService {
             const row = selectStmt.get(userId, platform);
             savedPrompts.push(row);
           } else {
-            // PostgreSQL - this shouldn't be reached in current setup, but kept for completeness
-            const queryResult = client.query(
-              `INSERT INTO user_prompts (user_id, platform, prompt)
-               VALUES ($1, $2, $3)
+            // PostgreSQL
+            const queryResult = await client.query(
+              `INSERT INTO user_prompts (user_id, platform, prompt, created_at, updated_at)
+               VALUES ($1, $2, $3, $4, $5)
                ON CONFLICT (user_id, platform)
                DO UPDATE SET
                  prompt = EXCLUDED.prompt,
-                 updated_at = CURRENT_TIMESTAMP
+                 updated_at = EXCLUDED.updated_at
                RETURNING *`,
-              [userId, platform, prompt]
+              [userId, platform, prompt, now, now]
             );
             savedPrompts.push(queryResult.rows[0]);
           }
