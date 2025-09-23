@@ -3,6 +3,7 @@ import { UserService } from '../services/user-service.js';
 
 export interface AuthContext {
   userId?: string;
+  googleId?: string;
   email?: string;
   name?: string;
 }
@@ -23,9 +24,9 @@ export const authMiddleware: MiddlewareHandler = async (c, next) => {
       }, 401);
     }
 
-    const userId = authorization.substring(7);
+    const googleId = authorization.substring(7);
 
-    if (!userId) {
+    if (!googleId) {
       console.warn(`❌ Auth failed: Empty token for ${method} ${path}`);
       return c.json({
         error: 'Invalid token: missing user information',
@@ -33,58 +34,49 @@ export const authMiddleware: MiddlewareHandler = async (c, next) => {
       }, 401);
     }
 
-    console.log(`🔍 Checking user: ${userId.substring(0, 8)}...`);
+    console.log(`🔍 Checking user with Google ID: ${googleId.substring(0, 8)}...`);
 
-    // 開発環境またはデータベースが使用できない場合はチェックをスキップ
-    const isDev = process.env.NODE_ENV === 'development';
+    // Google IDからUUID形式のユーザーIDを取得
+    const userService = new UserService();
+    let actualUserId: string;
 
-    // 開発環境では常にスキップ、本番環境でも一部のパスはスキップ
-    if (!isDev && path !== '/auth/signin') {
-      try {
-        // ユーザーがDBに存在するか確認
-        const userService = new UserService();
-        const userExists = await userService.userExists(userId);
+    try {
+      // まずGoogle IDでユーザーを検索
+      const user = await userService.findByGoogleId(googleId);
 
-        if (!userExists) {
-          // ユーザーが存在しない場合、自動的に作成を試みる（本番環境対応）
-          console.warn(`⚠️  User ${userId.substring(0, 8)}... not found in database, attempting to create`);
+      if (!user) {
+        // ユーザーが存在しない場合、自動的に作成
+        console.warn(`⚠️  User with Google ID ${googleId.substring(0, 8)}... not found, creating new user`);
 
-          try {
-            // 基本的なユーザー情報でユーザーを作成
-            const created = await userService.createUser({
-              googleId: userId,
-              email: 'unknown@example.com', // プレースホルダー
-              name: 'Unknown User',
-              picture: ''
-            });
+        const newUser = await userService.findOrCreateByGoogle({
+          googleId: googleId,
+          email: `user_${googleId}@temp.com`, // 仮のメールアドレス
+          name: 'User',
+          picture: ''
+        });
 
-            if (created) {
-              console.log(`✅ User ${userId.substring(0, 8)}... created successfully`);
-            } else {
-              console.warn(`❌ Failed to create user ${userId.substring(0, 8)}..., but continuing with authentication`);
-            }
-          } catch (createError) {
-            console.error(`❌ Error creating user ${userId.substring(0, 8)}...:`, createError);
-            // ユーザー作成に失敗してもリクエストを通す（本番環境の安定性のため）
-          }
-        } else {
-          console.log(`✅ User ${userId.substring(0, 8)}... found in database`);
-        }
-      } catch (dbError) {
-        // データベースエラーの場合は認証をスキップ
-        console.error(`❌ Database check failed for user ${userId.substring(0, 8)}..., skipping user validation:`, dbError);
-        console.warn('💡 This might indicate a database connection issue. Check your DB_* environment variables.');
+        actualUserId = newUser.id;
+        console.log(`✅ New user created with ID: ${actualUserId}`);
+      } else {
+        actualUserId = user.id;
+        console.log(`✅ User found with ID: ${actualUserId}`);
       }
-    } else {
-      console.log(`🏃 Skipping database check (${isDev ? 'development mode' : 'auth endpoint'})`);
+    } catch (dbError) {
+      console.error(`❌ Database error for Google ID ${googleId.substring(0, 8)}...:`, dbError);
+      // エラーの場合は続行できない
+      return c.json({
+        error: 'Database error',
+        hint: 'Unable to verify user identity'
+      }, 500);
     }
 
-    // コンテキストにユーザー情報を設定
-    c.set('userId', userId);
+    // コンテキストにユーザー情報を設定（UUIDを使用）
+    c.set('userId', actualUserId);
+    c.set('googleId', googleId);
     c.set('email', ''); // 本番環境では後で取得可能
     c.set('name', ''); // 本番環境では後で取得可能
 
-    console.log(`✅ Auth successful for user: ${userId.substring(0, 8)}...`);
+    console.log(`✅ Auth successful for user: ${googleId.substring(0, 8)}... (UUID: ${actualUserId})`);
     await next();
   } catch (error) {
     console.error(`❌ Auth middleware error for ${c.req.method} ${c.req.path}:`, error);
@@ -120,39 +112,25 @@ export const optionalAuthMiddleware: MiddlewareHandler = async (c, next) => {
     const authorization = c.req.header('Authorization');
 
     if (authorization && authorization.startsWith('Bearer ')) {
-      const userId = authorization.substring(7);
+      const googleId = authorization.substring(7);
 
-      if (userId) {
-        // 開発環境ではデータベースチェックをスキップ
-        const isDev = process.env.NODE_ENV === 'development';
+      if (googleId) {
+        try {
+          const userService = new UserService();
+          const user = await userService.findByGoogleId(googleId);
 
-        if (!isDev) {
-          try {
-            const userService = new UserService();
-            const userExists = await userService.userExists(userId);
-
-            if (userExists) {
-              c.set('userId', userId);
-              c.set('email', '');
-              c.set('name', '');
-            } else {
-              // ユーザーが存在しない場合でも認証情報を設定（本番環境の安定性のため）
-              console.log(`Optional auth: User ${userId} not found but setting auth context`);
-              c.set('userId', userId);
-              c.set('email', '');
-              c.set('name', '');
-            }
-          } catch (dbError) {
-            // データベースエラーでも認証情報を設定
-            console.error('Optional auth: Database check failed, setting auth anyway:', dbError);
-            c.set('userId', userId);
-            c.set('email', '');
-            c.set('name', '');
+          if (user) {
+            c.set('userId', user.id);
+            c.set('googleId', googleId);
+            c.set('email', user.email || '');
+            c.set('name', user.name || '');
+          } else {
+            // オプショナル認証では新規ユーザー作成はしない
+            console.log(`Optional auth: User with Google ID ${googleId} not found`);
           }
-        } else {
-          c.set('userId', userId);
-          c.set('email', '');
-          c.set('name', '');
+        } catch (dbError) {
+          // データベースエラーの場合はスキップ
+          console.error('Optional auth: Database check failed:', dbError);
         }
       }
     }

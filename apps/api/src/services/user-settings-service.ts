@@ -12,20 +12,20 @@ export class UserSettingsService {
 
   private async ensureUserExists(userId: string): Promise<void> {
     try {
-      await databaseService.query(
-        `INSERT INTO users (id, email, name, created_at, updated_at)
-         VALUES ($1, $2, $3, $4, $5)
-         ON CONFLICT (id) DO NOTHING`,
-        [
-          userId,
-          `${userId}@example.com`, // Default email
-          `User ${userId}`, // Default name
-          new Date().toISOString(),
-          new Date().toISOString()
-        ]
+      // ユーザーが既に存在するか確認
+      const existingUser = await databaseService.query(
+        'SELECT 1 FROM users WHERE id = $1',
+        [userId]
       );
+
+      if (existingUser.rows.length === 0) {
+        // ユーザーが存在しない場合のみエラー
+        console.error(`User ${userId} does not exist and cannot create without google_id`);
+        throw new Error('User not found');
+      }
     } catch (error) {
-      console.log('Failed to ensure user exists:', error);
+      console.error('Failed to ensure user exists:', error);
+      throw error;
     }
   }
 
@@ -35,8 +35,8 @@ export class UserSettingsService {
   async getGlobalCharacterPrompt(userId: string): Promise<string | null> {
     try {
       const result = await databaseService.query(
-        'SELECT global_character_prompt FROM user_settings WHERE user_id = $1 LIMIT 1',
-        [userId]
+        'SELECT global_character_prompt FROM user_settings WHERE user_id = $1 AND platform = $2 LIMIT 1',
+        [userId, 'global']
       );
       return result.rows[0]?.global_character_prompt || null;
     } catch (error) {
@@ -54,20 +54,21 @@ export class UserSettingsService {
       await this.ensureUserExists(userId);
 
       const now = new Date().toISOString();
+      // platform = 'global' として保存
       await databaseService.query(
-        `INSERT INTO user_settings (user_id, global_character_prompt, created_at, updated_at)
-         VALUES ($1, $2, $3, $4)
-         ON CONFLICT (user_id)
+        `INSERT INTO user_settings (user_id, platform, global_character_prompt, created_at, updated_at)
+         VALUES ($1, $2, $3, $4, $5)
+         ON CONFLICT (user_id, platform)
          DO UPDATE SET
            global_character_prompt = EXCLUDED.global_character_prompt,
-           updated_at = $5`,
-        [userId, prompt, now, now, now]
+           updated_at = $6`,
+        [userId, 'global', prompt, now, now, now]
       );
 
       // Get the saved record
       const result = await databaseService.query(
-        'SELECT * FROM user_settings WHERE user_id = $1',
-        [userId]
+        'SELECT * FROM user_settings WHERE user_id = $1 AND platform = $2',
+        [userId, 'global']
       );
       return result.rows[0];
     } catch (error) {
@@ -89,8 +90,8 @@ export class UserSettingsService {
     try {
       const now = new Date().toISOString();
       const result = await databaseService.query(
-        'UPDATE user_settings SET global_character_prompt = NULL, updated_at = $2 WHERE user_id = $1',
-        [userId, now]
+        'UPDATE user_settings SET global_character_prompt = NULL, updated_at = $2 WHERE user_id = $1 AND platform = $3',
+        [userId, now, 'global']
       );
       return (result.rowCount ?? 0) > 0;
     } catch (error) {
@@ -111,16 +112,16 @@ export class UserSettingsService {
 
       const now = new Date().toISOString();
       await databaseService.query(
-        `INSERT INTO user_settings (user_id, global_character_prompt, created_at, updated_at)
-         VALUES ($1, $2, $3, $4)
-         ON CONFLICT (user_id) DO NOTHING`,
-        [userId, defaultPrompt, now, now]
+        `INSERT INTO user_settings (user_id, platform, global_character_prompt, created_at, updated_at)
+         VALUES ($1, $2, $3, $4, $5)
+         ON CONFLICT (user_id, platform) DO NOTHING`,
+        [userId, 'global', defaultPrompt, now, now]
       );
 
       // 設定を取得して返す
       const existing = await databaseService.query(
-        'SELECT * FROM user_settings WHERE user_id = $1',
-        [userId]
+        'SELECT * FROM user_settings WHERE user_id = $1 AND platform = $2',
+        [userId, 'global']
       );
       return existing.rows[0];
     } catch (error) {
@@ -140,8 +141,8 @@ export class UserSettingsService {
   async getUserSettings(userId: string): Promise<UserSettings | null> {
     try {
       const result = await databaseService.query(
-        'SELECT * FROM user_settings WHERE user_id = $1',
-        [userId]
+        'SELECT * FROM user_settings WHERE user_id = $1 AND platform = $2',
+        [userId, 'global']
       );
       return result.rows[0] || null;
     } catch (error) {
