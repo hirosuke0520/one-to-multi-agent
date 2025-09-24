@@ -2,9 +2,9 @@
 
 ## 現在の状況 ✅
 
-- **API サーバー**: http://localhost:8787 で動作中
-- **フロントエンド**: http://localhost:3000 で動作中 
-- **AI実装**: モックとGemini API対応済み
+- **API サーバー**: http://localhost:8080 で動作中
+- **フロントエンド**: http://localhost:3000 で動作中
+- **AI 実装**: モックと Gemini API 対応済み
 
 ## 🎯 動作確認手順
 
@@ -21,10 +21,10 @@
 4. 「コンテンツを生成」ボタンをクリック
 5. 結果を確認
 
-### 2. API直接テスト
+### 2. API 直接テスト
 
 ```bash
-curl -X POST http://localhost:8787/orchestrator/process \
+curl -X POST http://localhost:8080/orchestrator/process \
   -H "Content-Type: application/json" \
   -d '{
     "sourceType": "text",
@@ -40,14 +40,14 @@ curl -X POST http://localhost:8787/orchestrator/process \
 
 ## 🤖 Gemini API の有効化（オプション）
 
-### 方法1: Google AI Studio（推奨）
+### 方法 1: Google AI Studio（推奨）
 
 1. https://aistudio.google.com/ にアクセス
 2. 「Get API key」をクリック
 3. 新しいプロジェクトまたは既存プロジェクトを選択
-4. APIキーをコピー
+4. API キーをコピー
 
-### 方法2: Google Cloud Console
+### 方法 2: Google Cloud Console
 
 1. https://console.cloud.google.com/ にアクセス
 2. 「APIs & Services > Credentials」に移動
@@ -68,42 +68,47 @@ echo "USE_REAL_AI=true" >> apps/api/.env
 ## 🔍 期待される結果
 
 ### モック実装の場合
-- タイトル: "AI分析によるコンテンツタイトル"
+
+- タイトル: "AI 分析によるコンテンツタイトル"
 - 要約: 入力テキストの要約
 - キーポイント: 汎用的なポイント
 - プラットフォーム最適化: テンプレートベース
 
-### Gemini API使用の場合  
+### Gemini API 使用の場合
+
 - タイトル: 入力コンテンツに基づいた適切なタイトル
-- 要約: AIによる高品質な要約
+- 要約: AI による高品質な要約
 - キーポイント: コンテンツから抽出された実際のポイント
-- プラットフォーム最適化: AIによるプラットフォーム特化コンテンツ
+- プラットフォーム最適化: AI によるプラットフォーム特化コンテンツ
 
 ## 🚨 トラブルシューティング
 
 ### ポート競合
+
 ```bash
 lsof -i :3000
-lsof -i :8787
+lsof -i :8080
 kill -9 <PID>
 ```
 
 ### API エラー
+
 - ネットワーク接続を確認
 - .env ファイルの設定を確認
 - コンソールログを確認
 
 ### Gemini API エラー
-- APIキーの有効性を確認
-- API制限やクォータを確認
+
+- API キーの有効性を確認
+- API 制限やクォータを確認
 - `USE_REAL_AI=false` でモックモードに切り替え
 
 ## 📊 成功指標
 
-✅ フロントエンドからAPI呼び出し成功  
+✅ フロントエンドから API 呼び出し成功  
 ✅ ジョブ作成・処理・結果取得の完了  
 ✅ プラットフォーム別コンテンツ生成  
 ✅ エラーハンドリングの動作  
-✅ リアルタイム結果表示  
+✅ リアルタイム結果表示
 
-すべて確認できれば **MVP完成** です！🎉
+すべて確認できれば **MVP 完成** です！🎉
