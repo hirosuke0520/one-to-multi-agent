@@ -351,7 +351,7 @@ export class MetadataServiceSQL {
             typeof row.created_at === "string"
               ? row.created_at
               : row.created_at.toISOString(),
-          generatedContent: JSON.parse(row.generated_content || "[]"),
+          generatedContent: this.parseGeneratedContent(row.generated_content),
           previewData: null,
           usedPrompts: this.parseUsedPrompts(row.used_prompts),
         });
@@ -363,9 +363,7 @@ export class MetadataServiceSQL {
         content.previewData = {
           type: row.preview_type,
           duration: row.preview_duration,
-          waveform: row.waveform_data
-            ? JSON.parse(row.waveform_data)
-            : undefined,
+          waveform: this.parseJsonField(row.waveform_data),
           thumbnailUrl: row.thumbnail_base64,
           width: row.video_width,
           height: row.video_height,
@@ -377,6 +375,42 @@ export class MetadataServiceSQL {
     return Array.from(contentMap.values());
   }
 
+  private parseJsonField(raw: any): any {
+    if (!raw) {
+      return undefined;
+    }
+
+    try {
+      // PostgreSQL's JSONB columns return objects directly, not strings
+      return typeof raw === "string" ? JSON.parse(raw) : raw;
+    } catch (error) {
+      console.error("Failed to parse JSON field:", error);
+      return undefined;
+    }
+  }
+
+  private parseGeneratedContent(raw: any): any[] {
+    if (!raw) {
+      return [];
+    }
+
+    try {
+      // PostgreSQL's JSONB columns return objects directly, not strings
+      if (typeof raw === "string") {
+        return JSON.parse(raw);
+      } else if (Array.isArray(raw)) {
+        return raw;
+      } else if (typeof raw === "object") {
+        // If it's an object but not an array, wrap it in an array
+        return [raw];
+      }
+    } catch (error) {
+      console.error("Failed to parse generated content:", error);
+    }
+
+    return [];
+  }
+
   private parseUsedPrompts(
     raw: any
   ): Record<string, UsedPromptDetail> | undefined {
@@ -385,6 +419,7 @@ export class MetadataServiceSQL {
     }
 
     try {
+      // PostgreSQL's JSONB columns return objects directly, not strings
       const parsed = typeof raw === "string" ? JSON.parse(raw) : raw;
       if (parsed && typeof parsed === "object") {
         return parsed as Record<string, UsedPromptDetail>;
