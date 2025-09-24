@@ -72,7 +72,7 @@ steps:
       - "--set-env-vars"
       - "DB_HOST=/cloudsql/${_CLOUD_SQL_INSTANCE},DB_USER=postgres,DB_NAME=one_to_multi_agent,GCP_PROJECT_ID=$PROJECT_ID,GCS_BUCKET_NAME=${_GCS_BUCKET},NODE_ENV=production,USE_REAL_AI=true,STORAGE_TYPE=gcs,TEMP_DIR=/app/temp"
       - "--set-secrets"
-      - "DB_PASSWORD=db-password:latest,GOOGLE_API_KEY=gemini-api-key:latest"
+      - "DB_PASSWORD=db-password:latest,GOOGLE_API_KEY=gemini-api-key:latest,AUTH_SECRET=auth-secret:latest,AUTH_GOOGLE_ID=auth-google-id:latest,AUTH_GOOGLE_SECRET=auth-google-secret:latest"
       - "--memory"
       - "2Gi"
       - "--cpu"
