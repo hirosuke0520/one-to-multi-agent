@@ -110,6 +110,10 @@ steps:
       - "10"
       - "--port"
       - "3000"
+      - "--set-env-vars"
+      - "NODE_ENV=production,NEXTAUTH_URL=https://web-one-to-multi-agent-675967400701.asia-northeast1.run.app,NEXT_PUBLIC_API_URL=https://api-one-to-multi-agent-675967400701.asia-northeast1.run.app"
+      - "--set-secrets"
+      - "AUTH_SECRET=auth-secret:latest,AUTH_GOOGLE_ID=auth-google-id:latest,AUTH_GOOGLE_SECRET=auth-google-secret:latest"
     id: "deploy-web"
     waitFor: ["push-web", "deploy-api"]
 
