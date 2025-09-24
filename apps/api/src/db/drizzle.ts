@@ -22,7 +22,6 @@ const pool = new Pool(
         database: process.env.DB_NAME || "one_to_multi_agent",
         password: process.env.DB_PASSWORD,
         host: process.env.DB_HOST,
-        ssl: { rejectUnauthorized: false },
         max: 10,
         idleTimeoutMillis: 30000,
         connectionTimeoutMillis: 2000,
