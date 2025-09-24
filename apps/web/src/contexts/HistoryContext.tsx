@@ -1,11 +1,17 @@
 "use client";
 
-import React, { createContext, useContext, useState, useCallback, ReactNode } from 'react';
-import { getApiUrl } from '../lib/config';
+import React, {
+  createContext,
+  useContext,
+  useState,
+  useCallback,
+  ReactNode,
+} from "react";
+import { getApiUrl } from "../lib/config";
 
 interface ContentMetadata {
   id: string;
-  sourceType: 'text' | 'audio' | 'video';
+  sourceType: "text" | "audio" | "video";
   sourceText?: string;
   originalFileName?: string;
   duration?: number;
@@ -35,11 +41,15 @@ const HistoryContext = createContext<HistoryContextType | undefined>(undefined);
 
 interface HistoryProviderProps {
   children: ReactNode;
-  userId?: string;
+  token?: string;
   isAuthenticated?: boolean;
 }
 
-export function HistoryProvider({ children, userId, isAuthenticated }: HistoryProviderProps) {
+export function HistoryProvider({
+  children,
+  token,
+  isAuthenticated,
+}: HistoryProviderProps) {
   const [history, setHistory] = useState<ContentMetadata[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -48,11 +58,10 @@ export function HistoryProvider({ children, userId, isAuthenticated }: HistoryPr
     if (isLoading) return;
 
     // ログインしていない場合は履歴を取得しない
-    if (!userId) {
+    if (!token) {
       setHistory([]);
       return;
     }
-
 
     setIsLoading(true);
     setError(null);
@@ -65,10 +74,10 @@ export function HistoryProvider({ children, userId, isAuthenticated }: HistoryPr
       const timeoutId = setTimeout(() => controller.abort(), 5000); // 5秒でタイムアウト
 
       const response = await fetch(url, {
-        method: 'GET',
+        method: "GET",
         headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${userId}`,
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
         },
         signal: controller.signal,
       });
@@ -76,15 +85,15 @@ export function HistoryProvider({ children, userId, isAuthenticated }: HistoryPr
       clearTimeout(timeoutId);
 
       if (!response.ok) {
-        throw new Error('Failed to fetch history');
+        throw new Error("Failed to fetch history");
       }
 
       const data = await response.json();
       setHistory(data.data || []);
     } catch (err) {
       // AbortErrorの場合はログを出力しない（タイムアウト時の正常な動作）
-      if (err instanceof Error && err.name !== 'AbortError') {
-        console.error('Failed to fetch history:', err);
+      if (err instanceof Error && err.name !== "AbortError") {
+        console.error("Failed to fetch history:", err);
       }
       // APIサーバーに接続できない場合は、エラーを表示せず空の履歴を設定
       // 開発環境での使いやすさを向上させるため
@@ -93,15 +102,14 @@ export function HistoryProvider({ children, userId, isAuthenticated }: HistoryPr
     } finally {
       setIsLoading(false);
     }
-  }, [isLoading, userId]);
+  }, [isLoading, token]);
 
   const refreshHistory = useCallback(async () => {
     // ログインしていない場合は履歴を取得しない
-    if (!userId) {
+    if (!token) {
       setHistory([]);
       return;
     }
-
 
     // Force refresh without checking isLoading
     setIsLoading(true);
@@ -115,10 +123,10 @@ export function HistoryProvider({ children, userId, isAuthenticated }: HistoryPr
       const timeoutId = setTimeout(() => controller.abort(), 5000); // 5秒でタイムアウト
 
       const response = await fetch(url, {
-        method: 'GET',
+        method: "GET",
         headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${userId}`,
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
         },
         signal: controller.signal,
       });
@@ -126,15 +134,15 @@ export function HistoryProvider({ children, userId, isAuthenticated }: HistoryPr
       clearTimeout(timeoutId);
 
       if (!response.ok) {
-        throw new Error('Failed to fetch history');
+        throw new Error("Failed to fetch history");
       }
 
       const data = await response.json();
       setHistory(data.data || []);
     } catch (err) {
       // AbortErrorの場合はログを出力しない（タイムアウト時の正常な動作）
-      if (err instanceof Error && err.name !== 'AbortError') {
-        console.error('Failed to refresh history:', err);
+      if (err instanceof Error && err.name !== "AbortError") {
+        console.error("Failed to refresh history:", err);
       }
       // APIサーバーに接続できない場合は、エラーを表示せず空の履歴を設定
       setError(null);
@@ -142,10 +150,12 @@ export function HistoryProvider({ children, userId, isAuthenticated }: HistoryPr
     } finally {
       setIsLoading(false);
     }
-  }, [userId]);
+  }, [token]);
 
   return (
-    <HistoryContext.Provider value={{ history, isLoading, error, fetchHistory, refreshHistory }}>
+    <HistoryContext.Provider
+      value={{ history, isLoading, error, fetchHistory, refreshHistory }}
+    >
       {children}
     </HistoryContext.Provider>
   );
@@ -154,7 +164,7 @@ export function HistoryProvider({ children, userId, isAuthenticated }: HistoryPr
 export function useHistory() {
   const context = useContext(HistoryContext);
   if (context === undefined) {
-    throw new Error('useHistory must be used within a HistoryProvider');
+    throw new Error("useHistory must be used within a HistoryProvider");
   }
   return context;
 }

@@ -39,7 +39,7 @@ export default async function RootLayout({
         <SessionProvider session={session}>
           <SidebarProvider>
             <HistoryProviderWrapper
-              userId={session?.user?.id}
+              token={session?.user?.id}
               isAuthenticated={!!session}
             >
               <Header />

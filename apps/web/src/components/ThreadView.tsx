@@ -1,12 +1,12 @@
 "use client";
 
-import React, { useState, useEffect } from 'react';
-import { useSession } from 'next-auth/react';
-import { getApiUrl } from '../lib/config';
-import { PlatformContent as CorePlatformContent } from '@one-to-multi-agent/core';
-import { PlatformCard } from './PlatformCard';
-import { PlatformResult } from '../hooks/useContentGenerator';
-import { HistoryPromptModal } from './HistoryPromptModal';
+import React, { useState, useEffect } from "react";
+import { useSession } from "next-auth/react";
+import { getApiUrl } from "../lib/config";
+import { PlatformContent as CorePlatformContent } from "@one-to-multi-agent/core";
+import { PlatformCard } from "./PlatformCard";
+import { PlatformResult } from "../hooks/useContentGenerator";
+import { HistoryPromptModal } from "./HistoryPromptModal";
 
 interface AudioPreview {
   duration: number;
@@ -34,7 +34,7 @@ interface PlatformContent {
 
 interface ContentMetadata {
   id: string;
-  sourceType: 'text' | 'audio' | 'video';
+  sourceType: "text" | "audio" | "video";
   sourceText?: string; // User input text or transcribed text
   originalFileName?: string;
   duration?: number;
@@ -55,52 +55,61 @@ export function ThreadView({ threadId, token }: ThreadViewProps) {
   const [thread, setThread] = useState<ContentMetadata | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [editableContent, setEditableContent] = useState<Record<string, Partial<CorePlatformContent>>>({});
+  const [editableContent, setEditableContent] = useState<
+    Record<string, Partial<CorePlatformContent>>
+  >({});
   const [isPromptModalOpen, setIsPromptModalOpen] = useState(false);
 
   const fetchThread = async () => {
     setLoading(true);
     setError(null);
-    
+
     try {
       const authToken = session?.user?.id || token;
       if (!authToken) {
-        throw new Error('ユーザー情報が見つかりません。再ログインしてください。');
+        throw new Error(
+          "ユーザー情報が見つかりません。再ログインしてください。"
+        );
       }
 
       const url = `${getApiUrl()}/history`;
 
       const response = await fetch(url, {
-        method: 'GET',
+        method: "GET",
         headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${authToken}`,
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${authToken}`,
         },
       });
 
       if (!response.ok) {
-        throw new Error('Failed to fetch thread');
+        throw new Error("Failed to fetch thread");
       }
 
       const data = await response.json();
-      const foundThread = data.data?.find((item: ContentMetadata) => item.id === threadId);
-      
+      const foundThread = data.data?.find(
+        (item: ContentMetadata) => item.id === threadId
+      );
+
       if (!foundThread) {
-        throw new Error('Thread not found');
+        throw new Error("Thread not found");
       }
-      
+
       setThread(foundThread);
-      
+
       // Initialize editable content from thread data
-      const initialEditableContent: Record<string, Partial<CorePlatformContent>> = {};
+      const initialEditableContent: Record<
+        string,
+        Partial<CorePlatformContent>
+      > = {};
       foundThread.generatedContent.forEach((content: PlatformContent) => {
         // Parse JSON content if it's stored as string
         let parsedContent;
-        if (typeof content.content === 'string') {
+        if (typeof content.content === "string") {
           try {
             parsedContent = JSON.parse(content.content);
           } catch (e) {
-            console.error('Failed to parse content JSON for editing:', e);
+            console.error("Failed to parse content JSON for editing:", e);
             parsedContent = { content: content.content }; // fallback
           }
         } else {
@@ -110,7 +119,7 @@ export function ThreadView({ threadId, token }: ThreadViewProps) {
       });
       setEditableContent(initialEditableContent);
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to fetch thread');
+      setError(err instanceof Error ? err.message : "Failed to fetch thread");
     } finally {
       setLoading(false);
     }
@@ -122,13 +131,13 @@ export function ThreadView({ threadId, token }: ThreadViewProps) {
   }, [threadId, token, session?.user?.id]);
 
   const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleString('ja-JP');
+    return new Date(dateString).toLocaleString("ja-JP");
   };
 
   const formatDuration = (seconds: number) => {
     const minutes = Math.floor(seconds / 60);
     const remainingSeconds = seconds % 60;
-    return `${minutes}:${remainingSeconds.toString().padStart(2, '0')}`;
+    return `${minutes}:${remainingSeconds.toString().padStart(2, "0")}`;
   };
 
   const formatFileSize = (bytes: number) => {
@@ -137,18 +146,24 @@ export function ThreadView({ threadId, token }: ThreadViewProps) {
     return `${(bytes / (1024 * 1024)).toFixed(1)}MB`;
   };
 
-
   const getSourceTypeDisplay = (sourceType: string) => {
     switch (sourceType) {
-      case 'text': return 'テキスト';
-      case 'audio': return '音声';
-      case 'video': return '動画';
-      default: return sourceType;
+      case "text":
+        return "テキスト";
+      case "audio":
+        return "音声";
+      case "video":
+        return "動画";
+      default:
+        return sourceType;
     }
   };
 
-
-  const updateEditableContent = (platform: string, field: string, value: string | string[]) => {
+  const updateEditableContent = (
+    platform: string,
+    field: string,
+    value: string | string[]
+  ) => {
     setEditableContent((prev) => ({
       ...prev,
       [platform]: { ...prev[platform], [field]: value },
@@ -158,21 +173,21 @@ export function ThreadView({ threadId, token }: ThreadViewProps) {
   // Convert thread data to PlatformResult format for PlatformCard
   const getPlatformResults = (): PlatformResult[] => {
     if (!thread) return [];
-    
+
     return thread.generatedContent.map((content: PlatformContent) => {
       // Parse JSON content if it's stored as string
       let parsedContent;
-      if (typeof content.content === 'string') {
+      if (typeof content.content === "string") {
         try {
           parsedContent = JSON.parse(content.content);
         } catch (e) {
-          console.error('Failed to parse content JSON:', e);
+          console.error("Failed to parse content JSON:", e);
           parsedContent = { content: content.content }; // fallback
         }
       } else {
         parsedContent = content.content || content;
       }
-      
+
       return {
         platform: content.platform,
         success: true,
@@ -181,9 +196,9 @@ export function ThreadView({ threadId, token }: ThreadViewProps) {
           metadata: {
             generatedAt: thread.createdAt,
             sourceType: thread.sourceType,
-            platform: content.platform
-          }
-        }
+            platform: content.platform,
+          },
+        },
       };
     });
   };
@@ -236,46 +251,58 @@ export function ThreadView({ threadId, token }: ThreadViewProps) {
               {formatDate(thread.createdAt)}
             </span>
           </div>
-          
+
           {thread.originalFileName && (
             <div className="flex items-center space-x-2 text-xs md:text-sm text-gray-400 mb-2 flex-wrap">
               <span>📎 {thread.originalFileName}</span>
               {thread.duration && (
                 <span>({formatDuration(thread.duration)})</span>
               )}
-              {thread.size && (
-                <span>{formatFileSize(thread.size)}</span>
-              )}
+              {thread.size && <span>{formatFileSize(thread.size)}</span>}
             </div>
           )}
         </div>
 
         {/* Preview Data */}
-        {(thread.sourceType === 'video' || thread.sourceType === 'audio' || thread.previewData) && (
+        {(thread.sourceType === "video" ||
+          thread.sourceType === "audio" ||
+          thread.previewData) && (
           <div className="mb-6 p-4 bg-gray-800 border border-gray-700 rounded-lg">
             <h3 className="font-medium text-white mb-3">プレビュー</h3>
-            
-            {thread.sourceType === 'video' && (
+
+            {thread.sourceType === "video" && (
               <div className="mb-3">
-                <video 
-                  controls 
+                <video
+                  controls
                   className="w-full max-w-2xl rounded-lg shadow-sm"
-                  style={{ maxHeight: '500px', objectFit: 'contain' }}
+                  style={{ maxHeight: "500px", objectFit: "contain" }}
                   preload="metadata"
-                  poster={thread.previewData && 'thumbnailUrl' in thread.previewData && thread.previewData.thumbnailUrl ? thread.previewData.thumbnailUrl : undefined}
+                  poster={
+                    thread.previewData &&
+                    "thumbnailUrl" in thread.previewData &&
+                    thread.previewData.thumbnailUrl
+                      ? thread.previewData.thumbnailUrl
+                      : undefined
+                  }
                 >
-                  <source src={`${getApiUrl()}/video/${thread.id}`} type="video/mp4" />
+                  <source
+                    src={`${getApiUrl()}/video/${thread.id}`}
+                    type="video/mp4"
+                  />
                   お使いのブラウザは動画再生に対応していません。
                 </video>
-                {thread.previewData && 'width' in thread.previewData && 'height' in thread.previewData && (
-                  <div className="mt-2 text-xs text-gray-400">
-                    解像度: {thread.previewData.width} × {thread.previewData.height}
-                  </div>
-                )}
+                {thread.previewData &&
+                  "width" in thread.previewData &&
+                  "height" in thread.previewData && (
+                    <div className="mt-2 text-xs text-gray-400">
+                      解像度: {thread.previewData.width} ×{" "}
+                      {thread.previewData.height}
+                    </div>
+                  )}
               </div>
             )}
 
-            {thread.sourceType === 'audio' && (
+            {thread.sourceType === "audio" && (
               <div className="mb-3">
                 <audio
                   controls
@@ -285,7 +312,7 @@ export function ThreadView({ threadId, token }: ThreadViewProps) {
                 >
                   お使いのブラウザは音声再生に対応していません。
                 </audio>
-                {thread.previewData && 'duration' in thread.previewData && (
+                {thread.previewData && "duration" in thread.previewData && (
                   <div className="mt-2 text-xs text-gray-400">
                     長さ: {formatDuration(thread.previewData.duration)}
                   </div>
@@ -294,16 +321,18 @@ export function ThreadView({ threadId, token }: ThreadViewProps) {
             )}
 
             {/* Preview Data that's not audio/video (e.g., waveform visualization for old records) */}
-            {thread.previewData && thread.sourceType !== 'audio' && thread.sourceType !== 'video' && (
-              <div className="text-sm text-gray-400">
-                Preview data available
-              </div>
-            )}
+            {thread.previewData &&
+              thread.sourceType !== "audio" &&
+              thread.sourceType !== "video" && (
+                <div className="text-sm text-gray-400">
+                  Preview data available
+                </div>
+              )}
           </div>
         )}
 
         {/* Source Content Display - Only for text input */}
-        {thread.sourceType === 'text' && thread.sourceText && (
+        {thread.sourceType === "text" && thread.sourceText && (
           <div className="mb-6 md:mb-8">
             <h3 className="text-lg md:text-xl font-semibold text-white mb-3">
               入力テキスト
@@ -319,7 +348,9 @@ export function ThreadView({ threadId, token }: ThreadViewProps) {
         {/* Generated Content */}
         <div className="mt-6 md:mt-8 space-y-4 md:space-y-6">
           <div className="flex items-center justify-between">
-            <h2 className="text-xl md:text-2xl font-bold text-white">生成結果</h2>
+            <h2 className="text-xl md:text-2xl font-bold text-white">
+              生成結果
+            </h2>
             {token && session?.user?.id && (
               <button
                 onClick={() => {
@@ -355,12 +386,14 @@ export function ThreadView({ threadId, token }: ThreadViewProps) {
         </div>
 
         {/* 履歴プロンプト表示モーダル */}
-        {userId && session?.user?.id && (
+        {token && session?.user?.id && (
           <HistoryPromptModal
             isOpen={isPromptModalOpen}
             onClose={() => setIsPromptModalOpen(false)}
             threadId={threadId}
-            platforms={thread.generatedContent.map(content => content.platform)}
+            platforms={thread.generatedContent.map(
+              (content) => content.platform
+            )}
             token={session.user.id}
           />
         )}

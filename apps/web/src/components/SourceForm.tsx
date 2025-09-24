@@ -14,7 +14,6 @@ interface SourceFormProps {
   setTargets: (value: string[]) => void;
   isProcessing: boolean;
   handleSubmit: (e: FormEvent, customPrompts?: Record<string, string>) => void;
-  userId?: string;
   isAuthenticated?: boolean;
   tempPrompts?: Record<string, string>;
   onTempPromptsChange?: (prompts: Record<string, string>) => void;

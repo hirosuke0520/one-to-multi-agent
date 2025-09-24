@@ -169,10 +169,7 @@ export function HistoryPromptModal({
                     {promptData.generationPrompt ? (
                       <div className="space-y-4">
                         <div>
-                          <div className="flex items-center justify-between mb-2">
-                            <label className="block text-sm font-medium text-gray-700">
-                              生成時に使用されたプロンプト
-                            </label>
+                          <div className="flex items-center justify-end mb-2">
                             <button
                               onClick={() =>
                                 copyToClipboard(
@@ -205,86 +202,6 @@ export function HistoryPromptModal({
                             rows={6}
                           />
                         </div>
-
-                        {promptData.globalCharacterPrompt && (
-                          <div>
-                            <div className="flex items-center justify-between mb-2">
-                              <label className="block text-sm font-medium text-gray-700">
-                                グローバルキャラクタープロンプト
-                              </label>
-                              <button
-                                onClick={() =>
-                                  copyToClipboard(
-                                    promptData.globalCharacterPrompt!,
-                                    "グローバルキャラクタープロンプト"
-                                  )
-                                }
-                                className="text-sm text-blue-600 hover:text-blue-800 flex items-center gap-1"
-                              >
-                                <svg
-                                  className="w-4 h-4"
-                                  fill="none"
-                                  stroke="currentColor"
-                                  viewBox="0 0 24 24"
-                                >
-                                  <path
-                                    strokeLinecap="round"
-                                    strokeLinejoin="round"
-                                    strokeWidth={2}
-                                    d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"
-                                  />
-                                </svg>
-                                コピー
-                              </button>
-                            </div>
-                            <textarea
-                              value={promptData.globalCharacterPrompt}
-                              readOnly
-                              className="w-full px-3 py-2 border border-gray-300 rounded-lg bg-gray-50 resize-none focus:outline-none"
-                              rows={3}
-                            />
-                          </div>
-                        )}
-
-                        {promptData.platformPrompt && (
-                          <div>
-                            <div className="flex items-center justify-between mb-2">
-                              <label className="block text-sm font-medium text-gray-700">
-                                プラットフォーム固有プロンプト
-                              </label>
-                              <button
-                                onClick={() =>
-                                  copyToClipboard(
-                                    promptData.platformPrompt!,
-                                    "プラットフォーム固有プロンプト"
-                                  )
-                                }
-                                className="text-sm text-blue-600 hover:text-blue-800 flex items-center gap-1"
-                              >
-                                <svg
-                                  className="w-4 h-4"
-                                  fill="none"
-                                  stroke="currentColor"
-                                  viewBox="0 0 24 24"
-                                >
-                                  <path
-                                    strokeLinecap="round"
-                                    strokeLinejoin="round"
-                                    strokeWidth={2}
-                                    d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"
-                                  />
-                                </svg>
-                                コピー
-                              </button>
-                            </div>
-                            <textarea
-                              value={promptData.platformPrompt}
-                              readOnly
-                              className="w-full px-3 py-2 border border-gray-300 rounded-lg bg-gray-50 resize-none focus:outline-none"
-                              rows={3}
-                            />
-                          </div>
-                        )}
 
                         {promptData.customPrompt && (
                           <div>
