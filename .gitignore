@@ -79,3 +79,22 @@ gcp-service-account-key.json
 *.db
 *.sqlite
 *.sqlite3
+
+# TypeScript build info
+*.tsbuildinfo
+
+# Runtime data and temporary files
+apps/api/data/
+apps/api/temp/
+apps/api/storage/
+
+# Additional sensitive files
+*.key
+*.pem
+**/gcp-*.json
+**/service-account*.json
+**/*-key.json
+**/*credential*.json
+
+# Production environment files
+.env.production
