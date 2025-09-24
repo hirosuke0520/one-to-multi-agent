@@ -13,12 +13,12 @@ export const getApiUrl = (): string => {
   if (envApiUrl) {
     return envApiUrl;
   }
-  
+
   // Check if we're in the browser and window.__ENV__ is available (production)
-  if (typeof window !== 'undefined' && window.__ENV__?.NEXT_PUBLIC_API_URL) {
+  if (typeof window !== "undefined" && window.__ENV__?.NEXT_PUBLIC_API_URL) {
     return window.__ENV__.NEXT_PUBLIC_API_URL;
   }
-  
+
   // Default fallback
-  return 'http://localhost:8787';
+  return "http://localhost:8080";
 };

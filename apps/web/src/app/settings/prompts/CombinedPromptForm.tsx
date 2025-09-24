@@ -1,30 +1,41 @@
-'use client';
+"use client";
 
-import { useEffect, useState } from 'react';
-import { useRouter } from 'next/navigation';
+import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
 
-type Platform = 'twitter' | 'instagram' | 'tiktok' | 'threads' | 'youtube' | 'blog';
+type Platform =
+  | "twitter"
+  | "instagram"
+  | "tiktok"
+  | "threads"
+  | "youtube"
+  | "blog";
 
 interface Prompts {
   [key: string]: string;
 }
 
 const platformLabels: Record<Platform, string> = {
-  twitter: 'X (Twitter)',
-  instagram: 'Instagram',
-  tiktok: 'TikTok',
-  threads: 'Threads',
-  youtube: 'YouTube',
-  blog: 'WordPress'
+  twitter: "X (Twitter)",
+  instagram: "Instagram",
+  tiktok: "TikTok",
+  threads: "Threads",
+  youtube: "YouTube",
+  blog: "WordPress",
 };
 
 const platformPlaceholders: Record<Platform, string> = {
-  twitter: 'Twitterに最適化されたコンテンツを生成してください。280文字以内で簡潔に、ハッシュタグを効果的に使用してください。',
-  instagram: 'Instagramに最適化された視覚的に魅力的なコンテンツを生成してください。ハッシュタグとエンゲージメントを重視してください。',
-  tiktok: 'TikTokに最適化されたバイラル性を意識したコンテンツを生成してください。トレンドとエンターテイメント性を重視してください。',
-  threads: 'Threadsに最適化された会話を促すコンテンツを生成してください。親しみやすくコミュニティ感を大切にしてください。',
-  youtube: 'YouTubeに最適化されたコンテンツを生成してください。視聴者維持率と検索最適化を意識してください。',
-  blog: 'WordPressに最適化されたSEOを意識した詳細なコンテンツを生成してください。読みやすさと価値提供を重視してください。'
+  twitter:
+    "Twitterに最適化されたコンテンツを生成してください。280文字以内で簡潔に、ハッシュタグを効果的に使用してください。",
+  instagram:
+    "Instagramに最適化された視覚的に魅力的なコンテンツを生成してください。ハッシュタグとエンゲージメントを重視してください。",
+  tiktok:
+    "TikTokに最適化されたバイラル性を意識したコンテンツを生成してください。トレンドとエンターテイメント性を重視してください。",
+  threads:
+    "Threadsに最適化された会話を促すコンテンツを生成してください。親しみやすくコミュニティ感を大切にしてください。",
+  youtube:
+    "YouTubeに最適化されたコンテンツを生成してください。視聴者維持率と検索最適化を意識してください。",
+  blog: "WordPressに最適化されたSEOを意識した詳細なコンテンツを生成してください。読みやすさと価値提供を重視してください。",
 };
 
 interface CombinedPromptFormProps {
@@ -36,26 +47,39 @@ interface CombinedPromptFormProps {
 export function CombinedPromptForm({
   initialPrompts,
   initialCharacterPrompt,
-  token
+  token,
 }: CombinedPromptFormProps) {
   const router = useRouter();
 
   // 媒体別プロンプト関連
-  const [prompts, setPrompts] = useState<Prompts>(() => ({ ...initialPrompts }));
-  const [editingPrompts, setEditingPrompts] = useState<Prompts>(() => ({ ...initialPrompts }));
+  const [prompts, setPrompts] = useState<Prompts>(() => ({
+    ...initialPrompts,
+  }));
+  const [editingPrompts, setEditingPrompts] = useState<Prompts>(() => ({
+    ...initialPrompts,
+  }));
   const [promptsSaving, setPromptsSaving] = useState(false);
-  const [promptsMessage, setPromptsMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
+  const [promptsMessage, setPromptsMessage] = useState<{
+    type: "success" | "error";
+    text: string;
+  } | null>(null);
   const [isEditingPrompts, setIsEditingPrompts] = useState(false);
 
   // キャラクタープロンプト関連
-  const [characterPrompt, setCharacterPrompt] = useState(initialCharacterPrompt);
-  const [editingCharacterPrompt, setEditingCharacterPrompt] = useState(initialCharacterPrompt);
+  const [characterPrompt, setCharacterPrompt] = useState(
+    initialCharacterPrompt
+  );
+  const [editingCharacterPrompt, setEditingCharacterPrompt] = useState(
+    initialCharacterPrompt
+  );
   const [characterSaving, setCharacterSaving] = useState(false);
-  const [characterMessage, setCharacterMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
+  const [characterMessage, setCharacterMessage] = useState<{
+    type: "success" | "error";
+    text: string;
+  } | null>(null);
   const [isEditingCharacter, setIsEditingCharacter] = useState(false);
 
-
-  const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8787';
+  const apiUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8080";
 
   useEffect(() => {
     setPrompts({ ...initialPrompts });
@@ -76,27 +100,36 @@ export function CombinedPromptForm({
 
     try {
       const response = await fetch(`${apiUrl}/prompts/batch`, {
-        method: 'POST',
+        method: "POST",
         headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
         },
-        body: JSON.stringify({ prompts: editingPrompts })
+        body: JSON.stringify({ prompts: editingPrompts }),
       });
 
       if (!response.ok) {
-        throw new Error('Failed to save prompts');
+        throw new Error("Failed to save prompts");
       }
 
       setPrompts({ ...editingPrompts });
       setIsEditingPrompts(false);
-      setPromptsMessage({ type: 'success', text: '媒体別プロンプトを保存しました' });
+      setPromptsMessage({
+        type: "success",
+        text: "媒体別プロンプトを保存しました",
+      });
     } catch (error) {
-      console.error('Failed to save prompts:', error);
-      if (error instanceof Error && error.message.includes('fetch')) {
-        setPromptsMessage({ type: 'error', text: 'APIサーバーに接続できません。ローカル環境では正常です。' });
+      console.error("Failed to save prompts:", error);
+      if (error instanceof Error && error.message.includes("fetch")) {
+        setPromptsMessage({
+          type: "error",
+          text: "APIサーバーに接続できません。ローカル環境では正常です。",
+        });
       } else {
-        setPromptsMessage({ type: 'error', text: '媒体別プロンプトの保存に失敗しました' });
+        setPromptsMessage({
+          type: "error",
+          text: "媒体別プロンプトの保存に失敗しました",
+        });
       }
     } finally {
       setPromptsSaving(false);
@@ -109,29 +142,41 @@ export function CombinedPromptForm({
     setCharacterMessage(null);
 
     try {
-      const response = await fetch(`${apiUrl}/user-settings/global-character-prompt`, {
-        method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
-        },
-        body: JSON.stringify({ prompt: editingCharacterPrompt })
-      });
+      const response = await fetch(
+        `${apiUrl}/user-settings/global-character-prompt`,
+        {
+          method: "PUT",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`,
+          },
+          body: JSON.stringify({ prompt: editingCharacterPrompt }),
+        }
+      );
 
       if (!response.ok) {
-        throw new Error('Failed to save global character prompt');
+        throw new Error("Failed to save global character prompt");
       }
 
       const data = await response.json();
       setCharacterPrompt(data.globalCharacterPrompt || editingCharacterPrompt);
       setIsEditingCharacter(false);
-      setCharacterMessage({ type: 'success', text: 'キャラクタープロンプトを保存しました' });
+      setCharacterMessage({
+        type: "success",
+        text: "キャラクタープロンプトを保存しました",
+      });
     } catch (error) {
-      console.error('Failed to save global character prompt:', error);
-      if (error instanceof Error && error.message.includes('fetch')) {
-        setCharacterMessage({ type: 'error', text: 'APIサーバーに接続できません。ローカル環境では正常です。' });
+      console.error("Failed to save global character prompt:", error);
+      if (error instanceof Error && error.message.includes("fetch")) {
+        setCharacterMessage({
+          type: "error",
+          text: "APIサーバーに接続できません。ローカル環境では正常です。",
+        });
       } else {
-        setCharacterMessage({ type: 'error', text: 'キャラクタープロンプトの保存に失敗しました' });
+        setCharacterMessage({
+          type: "error",
+          text: "キャラクタープロンプトの保存に失敗しました",
+        });
       }
     } finally {
       setCharacterSaving(false);
@@ -140,7 +185,7 @@ export function CombinedPromptForm({
 
   // 媒体別プロンプトリセット
   const handlePromptsReset = async () => {
-    if (!confirm('全ての媒体別プロンプトをデフォルトに戻しますか？')) {
+    if (!confirm("全ての媒体別プロンプトをデフォルトに戻しますか？")) {
       return;
     }
 
@@ -149,24 +194,30 @@ export function CombinedPromptForm({
 
     try {
       const response = await fetch(`${apiUrl}/prompts`, {
-        method: 'DELETE',
+        method: "DELETE",
         headers: {
-          'Authorization': `Bearer ${token}`
-        }
+          Authorization: `Bearer ${token}`,
+        },
       });
 
       if (!response.ok) {
-        throw new Error('Failed to reset prompts');
+        throw new Error("Failed to reset prompts");
       }
 
       // ローカル状態を空にリセット（placeholderが表示される）
-    setPrompts({});
-    setEditingPrompts({});
+      setPrompts({});
+      setEditingPrompts({});
       setIsEditingPrompts(false);
-      setPromptsMessage({ type: 'success', text: '媒体別プロンプトをデフォルトに戻しました' });
+      setPromptsMessage({
+        type: "success",
+        text: "媒体別プロンプトをデフォルトに戻しました",
+      });
     } catch (error) {
-      console.error('Failed to reset prompts:', error);
-      setPromptsMessage({ type: 'error', text: '媒体別プロンプトのリセットに失敗しました' });
+      console.error("Failed to reset prompts:", error);
+      setPromptsMessage({
+        type: "error",
+        text: "媒体別プロンプトのリセットに失敗しました",
+      });
     } finally {
       setPromptsSaving(false);
     }
@@ -174,7 +225,7 @@ export function CombinedPromptForm({
 
   // キャラクタープロンプトリセット
   const handleCharacterReset = async () => {
-    if (!confirm('キャラクタープロンプトをデフォルトに戻しますか？')) {
+    if (!confirm("キャラクタープロンプトをデフォルトに戻しますか？")) {
       return;
     }
 
@@ -182,25 +233,34 @@ export function CombinedPromptForm({
     setCharacterMessage(null);
 
     try {
-      const response = await fetch(`${apiUrl}/user-settings/global-character-prompt`, {
-        method: 'DELETE',
-        headers: {
-          'Authorization': `Bearer ${token}`
+      const response = await fetch(
+        `${apiUrl}/user-settings/global-character-prompt`,
+        {
+          method: "DELETE",
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
         }
-      });
+      );
 
       if (!response.ok) {
-        throw new Error('Failed to reset global character prompt');
+        throw new Error("Failed to reset global character prompt");
       }
 
       const data = await response.json();
       setCharacterPrompt(data.globalCharacterPrompt);
       setEditingCharacterPrompt(data.globalCharacterPrompt);
       setIsEditingCharacter(false);
-      setCharacterMessage({ type: 'success', text: 'キャラクタープロンプトをデフォルトに戻しました' });
+      setCharacterMessage({
+        type: "success",
+        text: "キャラクタープロンプトをデフォルトに戻しました",
+      });
     } catch (error) {
-      console.error('Failed to reset global character prompt:', error);
-      setCharacterMessage({ type: 'error', text: 'キャラクタープロンプトのリセットに失敗しました' });
+      console.error("Failed to reset global character prompt:", error);
+      setCharacterMessage({
+        type: "error",
+        text: "キャラクタープロンプトのリセットに失敗しました",
+      });
     } finally {
       setCharacterSaving(false);
     }
@@ -217,7 +277,7 @@ export function CombinedPromptForm({
   };
 
   const handlePromptChange = (platform: Platform, value: string) => {
-    setEditingPrompts(prev => ({ ...prev, [platform]: value }));
+    setEditingPrompts((prev) => ({ ...prev, [platform]: value }));
     setIsEditingPrompts(true);
   };
 
@@ -232,7 +292,7 @@ export function CombinedPromptForm({
       <div className="flex items-center justify-between">
         <h1 className="text-3xl font-bold text-white">プロンプト設定</h1>
         <button
-          onClick={() => router.push('/')}
+          onClick={() => router.push("/")}
           className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-gray-300 bg-gray-700 hover:bg-gray-600 rounded-lg transition-colors shadow-sm"
         >
           <svg
@@ -267,9 +327,9 @@ export function CombinedPromptForm({
         {characterMessage && (
           <div
             className={`mb-4 p-4 rounded-lg ${
-              characterMessage.type === 'success'
-                ? 'bg-green-50 text-green-800 border border-green-200'
-                : 'bg-red-50 text-red-800 border border-red-200'
+              characterMessage.type === "success"
+                ? "bg-green-50 text-green-800 border border-green-200"
+                : "bg-red-50 text-red-800 border border-red-200"
             }`}
           >
             {characterMessage.text}
@@ -329,7 +389,7 @@ export function CombinedPromptForm({
                 保存中...
               </>
             ) : (
-              'キャラクタープロンプトを保存'
+              "キャラクタープロンプトを保存"
             )}
           </button>
         </div>
@@ -338,7 +398,9 @@ export function CombinedPromptForm({
       {/* 媒体別プロンプト設定セクション */}
       <div className="bg-gray-900 border border-gray-700 rounded-lg shadow p-6">
         <div className="flex items-center justify-between mb-6">
-          <h2 className="text-2xl font-bold text-blue-400">媒体別プロンプト設定</h2>
+          <h2 className="text-2xl font-bold text-blue-400">
+            媒体別プロンプト設定
+          </h2>
           <button
             onClick={handlePromptsReset}
             className="text-sm text-gray-400 hover:text-gray-200 underline"
@@ -350,9 +412,9 @@ export function CombinedPromptForm({
         {promptsMessage && (
           <div
             className={`mb-4 p-4 rounded-lg ${
-              promptsMessage.type === 'success'
-                ? 'bg-green-50 text-green-800 border border-green-200'
-                : 'bg-red-50 text-red-800 border border-red-200'
+              promptsMessage.type === "success"
+                ? "bg-green-50 text-green-800 border border-green-200"
+                : "bg-red-50 text-red-800 border border-red-200"
             }`}
           >
             {promptsMessage.text}
@@ -361,7 +423,10 @@ export function CombinedPromptForm({
 
         <div className="space-y-4">
           {(Object.keys(platformLabels) as Platform[]).map((platform) => (
-            <div key={platform} className="border border-gray-600 rounded-lg p-4 bg-gray-800">
+            <div
+              key={platform}
+              className="border border-gray-600 rounded-lg p-4 bg-gray-800"
+            >
               <label
                 htmlFor={`prompt-${platform}`}
                 className="block text-sm font-medium text-gray-300 mb-2"
@@ -370,7 +435,7 @@ export function CombinedPromptForm({
               </label>
               <textarea
                 id={`prompt-${platform}`}
-                value={editingPrompts[platform] || ''}
+                value={editingPrompts[platform] || ""}
                 onChange={(e) => handlePromptChange(platform, e.target.value)}
                 className="w-full px-3 py-2 border border-gray-600 rounded-lg bg-gray-700 text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none"
                 rows={3}
@@ -402,7 +467,7 @@ export function CombinedPromptForm({
                 保存中...
               </>
             ) : (
-              '媒体別プロンプトを保存'
+              "媒体別プロンプトを保存"
             )}
           </button>
         </div>
@@ -412,9 +477,18 @@ export function CombinedPromptForm({
       <div className="bg-gray-800 border border-gray-600 rounded-lg p-4">
         <h3 className="font-semibold text-blue-400 mb-2">使い方</h3>
         <ul className="text-sm text-gray-300 space-y-1 list-disc list-inside">
-          <li><strong>キャラクター設定:</strong> 全てのプラットフォームで共通して使用される基本的なキャラクター設定です</li>
-          <li><strong>媒体別プロンプト設定:</strong> 各プラットフォーム用のプロンプトをカスタマイズできます</li>
-          <li>実際のコンテンツ生成時は、キャラクタープロンプト + プラットフォーム固有プロンプトが統合されて使用されます</li>
+          <li>
+            <strong>キャラクター設定:</strong>{" "}
+            全てのプラットフォームで共通して使用される基本的なキャラクター設定です
+          </li>
+          <li>
+            <strong>媒体別プロンプト設定:</strong>{" "}
+            各プラットフォーム用のプロンプトをカスタマイズできます
+          </li>
+          <li>
+            実際のコンテンツ生成時は、キャラクタープロンプト +
+            プラットフォーム固有プロンプトが統合されて使用されます
+          </li>
           <li>空のプロンプトの場合はデフォルトのプロンプトが使用されます</li>
           <li>各セクションの保存ボタンは独立して動作します</li>
         </ul>

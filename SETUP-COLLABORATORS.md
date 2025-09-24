@@ -1,6 +1,6 @@
 # 共同作業者セットアップガイド
 
-このガイドは、共同作業者がGoogleログイン機能を含むプロジェクトを確実に動作させるための手順書です。
+このガイドは、共同作業者が Google ログイン機能を含むプロジェクトを確実に動作させるための手順書です。
 
 ## 🚀 クイックスタート（最小セット）
 
@@ -26,6 +26,7 @@ cp .env.example .env
 ```
 
 **必須環境変数：**
+
 ```env
 # Google OAuth （必須）
 AUTH_GOOGLE_ID=your-google-client-id
@@ -76,7 +77,7 @@ npm run start -w apps/web
 
 ## 🔧 詳細セットアップ
 
-### Google OAuth設定
+### Google OAuth 設定
 
 1. [Google Cloud Console](https://console.cloud.google.com/)にアクセス
 2. プロジェクト選択: `one-to-multi-agent`
@@ -107,9 +108,9 @@ GCS_BUCKET_NAME=one-to-multi-agent-storage
 NODE_ENV=production
 ```
 
-### リバースプロキシ/CORS設定
+### リバースプロキシ/CORS 設定
 
-Nginx等を使用している場合、以下の設定が必要：
+Nginx 等を使用している場合、以下の設定が必要：
 
 ```nginx
 proxy_set_header Authorization $http_authorization;
@@ -133,7 +134,7 @@ sudo timedatectl set-ntp true
 
 ## 🐛 トラブルシューティング
 
-### 401エラーが発生する場合
+### 401 エラーが発生する場合
 
 **A. トークン直叩きテスト**
 
@@ -146,12 +147,13 @@ curl -i "$API" -H "Authorization: Bearer $TOKEN"
 ```
 
 **結果の判定：**
-- `200 OK`: ネットワーク/認証はOK → フロントエンド実装を確認
-- `401 Unauthorized`: 次のステップBへ
 
-**B. 401エラーの詳細ログ確認**
+- `200 OK`: ネットワーク/認証は OK → フロントエンド実装を確認
+- `401 Unauthorized`: 次のステップ B へ
 
-APIサーバーのログで以下を確認：
+**B. 401 エラーの詳細ログ確認**
+
+API サーバーのログで以下を確認：
 
 ```bash
 # Cloud Runログ確認
@@ -164,16 +166,17 @@ npm run start -w apps/api
 
 **エラーパターン別対処法：**
 
-| エラーメッセージ | 原因 | 対処法 |
-|----------------|------|-------|
-| `invalid signature` | AUTH_SECRET不一致 | .envのAUTH_SECRETを確認 |
-| `expired` | 時刻ズレ | 時刻同期を実行 |
-| `user not found` | DB未同期 | データベーススキーマを再適用 |
-| `CORS error` | ヘッダー設定 | CORS設定を確認 |
+| エラーメッセージ    | 原因               | 対処法                       |
+| ------------------- | ------------------ | ---------------------------- |
+| `invalid signature` | AUTH_SECRET 不一致 | .env の AUTH_SECRET を確認   |
+| `expired`           | 時刻ズレ           | 時刻同期を実行               |
+| `user not found`    | DB 未同期          | データベーススキーマを再適用 |
+| `CORS error`        | ヘッダー設定       | CORS 設定を確認              |
 
 ### よくある問題と解決法
 
-1. **Googleログインできない**
+1. **Google ログインできない**
+
    ```bash
    # OAuth設定を確認
    echo $AUTH_GOOGLE_ID
@@ -184,6 +187,7 @@ npm run start -w apps/api
    ```
 
 2. **データベース接続エラー**
+
    ```bash
    # 接続テスト
    psql $DATABASE_URL -c "SELECT version();"
@@ -192,24 +196,27 @@ npm run start -w apps/api
    psql $DATABASE_URL -c "\dt"
    ```
 
-3. **APIが応答しない**
+3. **API が応答しない**
+
    ```bash
    # ヘルスチェック
    curl -i https://api-one-to-multi-agent-675967400701.asia-northeast1.run.app/health
 
    # ローカルでの確認
-   curl -i http://localhost:8787/health
+   curl -i http://localhost:8080/health
    ```
 
 ### 緊急時の切り分け手順
 
 1. **環境変数確認**
+
    ```bash
    # 必須変数がすべて設定されているか確認
    env | grep -E "(AUTH_|NEXT_PUBLIC_|DB_|GOOGLE_)"
    ```
 
 2. **ネットワーク確認**
+
    ```bash
    # API疎通確認
    curl -I https://api-one-to-multi-agent-675967400701.asia-northeast1.run.app

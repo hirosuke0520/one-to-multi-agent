@@ -1,8 +1,8 @@
-import { databaseService } from './database-service.js';
+import { databaseService } from "./database-service.js";
 
 export interface ContentMetadata {
   id: string;
-  sourceType: 'text' | 'audio' | 'video';
+  sourceType: "text" | "audio" | "video";
   sourceText?: string; // For text input content or transcription
   originalFileName?: string;
   originalFilePath?: string; // Path to original uploaded file
@@ -54,109 +54,135 @@ export class MetadataServiceSQL {
 
   async saveMetadata(metadata: ContentMetadata): Promise<void> {
     try {
-      await databaseService.transaction((client) => {
+      await databaseService.transaction(async (client) => {
         // Ensure user exists if userId is provided
         if (metadata.userId) {
-          const userCheckStmt = client.prepare(`SELECT id FROM users WHERE id = ?`);
-          const existingUser = userCheckStmt.get(metadata.userId);
+          const userCheckResult = await client.query(
+            `SELECT id FROM users WHERE id = $1`,
+            [metadata.userId]
+          );
+          const existingUser = userCheckResult.rows[0];
 
           if (!existingUser) {
-            const insertUserStmt = client.prepare(`
-              INSERT OR IGNORE INTO users (id, email, name, created_at, updated_at)
-              VALUES (?, ?, ?, ?, ?)
-            `);
-            insertUserStmt.run(
-              metadata.userId,
-              `${metadata.userId}@example.com`, // Default email
-              `User ${metadata.userId}`, // Default name
-              new Date().toISOString(),
-              new Date().toISOString()
+            await client.query(
+              `
+              INSERT INTO users (id, email, name, created_at, updated_at)
+              VALUES ($1, $2, $3, $4, $5)
+              ON CONFLICT (id) DO NOTHING
+            `,
+              [
+                metadata.userId,
+                `${metadata.userId}@example.com`, // Default email
+                `User ${metadata.userId}`, // Default name
+                new Date().toISOString(),
+                new Date().toISOString(),
+              ]
             );
           }
         }
 
-        // Insert main content metadata
-        const insertStmt = client.prepare(`
-          INSERT OR REPLACE INTO content_metadata (
+        // Insert main content metadata (using original schema fields)
+        await client.query(
+          `
+          INSERT INTO content_metadata (
             id, source_type, source_text, original_file_name,
             file_size, mime_type, duration, user_id, created_at, generated_content, used_prompts
-          ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-        `);
-
-        insertStmt.run(
-          metadata.id,
-          metadata.sourceType,
-          metadata.sourceText || null,
-          metadata.originalFileName || null,
-          metadata.size || null,
-          metadata.mimeType || null,
-          metadata.duration || null,
-          metadata.userId || null,
-          metadata.createdAt,
-          JSON.stringify(metadata.generatedContent || []),
-          JSON.stringify(metadata.usedPrompts || {})
+          ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
+          ON CONFLICT (id) DO UPDATE SET
+            source_type = EXCLUDED.source_type,
+            source_text = EXCLUDED.source_text,
+            original_file_name = EXCLUDED.original_file_name,
+            file_size = EXCLUDED.file_size,
+            mime_type = EXCLUDED.mime_type,
+            duration = EXCLUDED.duration,
+            generated_content = EXCLUDED.generated_content,
+            used_prompts = EXCLUDED.used_prompts
+        `,
+          [
+            metadata.id,
+            metadata.sourceType,
+            metadata.sourceText || null,
+            metadata.originalFileName || null,
+            metadata.size || null,
+            metadata.mimeType || null,
+            metadata.duration || null,
+            metadata.userId || null,
+            metadata.createdAt,
+            JSON.stringify(metadata.generatedContent || []),
+            JSON.stringify(metadata.usedPrompts || {}),
+          ]
         );
 
         // Insert preview data if exists
         if (metadata.previewData) {
-          const deletePreviewStmt = client.prepare(`DELETE FROM preview_data WHERE content_id = ?`);
-          deletePreviewStmt.run(metadata.id);
+          await client.query(`DELETE FROM preview_data WHERE content_id = $1`, [
+            metadata.id,
+          ]);
 
-          const previewType = metadata.sourceType === 'audio' ? 'audio' : 'video';
+          const previewType =
+            metadata.sourceType === "audio" ? "audio" : "video";
           const preview = metadata.previewData;
 
-          const insertPreviewStmt = client.prepare(`
+          await client.query(
+            `
             INSERT INTO preview_data (
               content_id, preview_type, duration, waveform_data,
-              thumbnail_base64, video_width, video_height, transcript_preview
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-          `);
-
-          insertPreviewStmt.run(
-            metadata.id,
-            previewType,
-            preview.duration || null,
-            'waveform' in preview ? JSON.stringify(preview.waveform) : null,
-            'thumbnailUrl' in preview ? preview.thumbnailUrl : null,
-            'width' in preview ? preview.width : null,
-            'height' in preview ? preview.height : null,
-            preview.transcript || null
+              thumbnail_base64, video_width, video_height, transcript_preview, created_at
+            ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+          `,
+            [
+              metadata.id,
+              previewType,
+              preview.duration || null,
+              "waveform" in preview ? JSON.stringify(preview.waveform) : null,
+              "thumbnailUrl" in preview ? preview.thumbnailUrl : null,
+              "width" in preview ? preview.width : null,
+              "height" in preview ? preview.height : null,
+              preview.transcript || null,
+              new Date().toISOString(),
+            ]
           );
         }
       });
 
       console.log(`Metadata saved to database: ${metadata.id}`);
     } catch (error) {
-      console.error('Failed to save metadata to database:', error);
+      console.error("Failed to save metadata to database:", error);
       throw error;
     }
   }
 
   async getMetadata(id: string): Promise<ContentMetadata | null> {
     try {
-      const result = await databaseService.query(`
+      const result = await databaseService.query(
+        `
         SELECT * FROM content_metadata WHERE id = $1
-      `, [id]);
+      `,
+        [id]
+      );
 
       if (result.rows.length === 0) {
         return null;
       }
 
       const row = result.rows[0];
-      
+
       // Get preview data
-      const previewResult = await databaseService.query(`
+      const previewResult = await databaseService.query(
+        `
         SELECT * FROM preview_data WHERE content_id = $1
-      `, [id]);
+      `,
+        [id]
+      );
 
       let previewData: AudioPreview | VideoPreview | undefined;
       if (previewResult.rows.length > 0) {
         const previewRow = previewResult.rows[0];
-        if (previewRow.preview_type === 'audio') {
+        if (previewRow.preview_type === "audio") {
           previewData = {
             duration: previewRow.duration || 0,
             waveform: previewRow.waveform_data || [],
-            transcript: previewRow.transcript_preview
+            transcript: previewRow.transcript_preview,
           };
         } else {
           previewData = {
@@ -164,25 +190,30 @@ export class MetadataServiceSQL {
             thumbnailUrl: previewRow.thumbnail_base64,
             width: previewRow.video_width,
             height: previewRow.video_height,
-            transcript: previewRow.transcript_preview
+            transcript: previewRow.transcript_preview,
           };
         }
       }
 
       // Get platform content
-      const platformResult = await databaseService.query(`
+      const platformResult = await databaseService.query(
+        `
         SELECT * FROM platform_content WHERE content_id = $1 ORDER BY created_at
-      `, [id]);
+      `,
+        [id]
+      );
 
-      const generatedContent: PlatformContent[] = platformResult.rows.map((contentRow: any) => ({
-        platform: contentRow.platform,
-        title: contentRow.title,
-        description: contentRow.description,
-        content: contentRow.content,
-        hashtags: contentRow.hashtags,
-        script: contentRow.script,
-        chapters: contentRow.chapters
-      }));
+      const generatedContent: PlatformContent[] = platformResult.rows.map(
+        (contentRow: any) => ({
+          platform: contentRow.platform,
+          title: contentRow.title,
+          description: contentRow.description,
+          content: contentRow.content,
+          hashtags: contentRow.hashtags,
+          script: contentRow.script,
+          chapters: contentRow.chapters,
+        })
+      );
 
       return {
         id: row.id,
@@ -197,10 +228,13 @@ export class MetadataServiceSQL {
         previewData,
         generatedContent,
         usedPrompts: this.parseUsedPrompts(row.used_prompts),
-        createdAt: typeof row.created_at === 'string' ? row.created_at : row.created_at.toISOString()
+        createdAt:
+          typeof row.created_at === "string"
+            ? row.created_at
+            : row.created_at.toISOString(),
       };
     } catch (error) {
-      console.error('Failed to get metadata from database:', error);
+      console.error("Failed to get metadata from database:", error);
       return null;
     }
   }
@@ -230,24 +264,22 @@ export class MetadataServiceSQL {
         const result = await databaseService.query(query, [userId, limit]);
         return this.processMetadataResults(result.rows);
       } else {
-        // SQLite用のクエリ
-        return await databaseService.transaction((client) => {
-          const stmt = client.prepare(`
-            SELECT cm.*,
-                   pd.preview_type, pd.duration as preview_duration, pd.waveform_data,
-                   pd.thumbnail_base64, pd.video_width, pd.video_height, pd.transcript_preview
-            FROM content_metadata cm
-            LEFT JOIN preview_data pd ON cm.id = pd.content_id
-            WHERE cm.user_id = ?
-            ORDER BY cm.created_at DESC LIMIT ?
-          `);
+        // PostgreSQL fallback (should not happen since we're using PostgreSQL)
+        let query = `
+          SELECT cm.*,
+                 pd.preview_type, pd.duration as preview_duration, pd.waveform_data,
+                 pd.thumbnail_base64, pd.video_width, pd.video_height, pd.transcript_preview
+          FROM content_metadata cm
+          LEFT JOIN preview_data pd ON cm.id = pd.content_id
+          WHERE cm.user_id = $1
+          ORDER BY cm.created_at DESC LIMIT $2
+        `;
 
-          const rows = stmt.all(userId, limit);
-          return this.processMetadataResults(rows);
-        });
+        const result = await databaseService.query(query, [userId, limit]);
+        return this.processMetadataResults(result.rows);
       }
     } catch (error) {
-      console.error('Failed to list metadata from database:', error);
+      console.error("Failed to list metadata from database:", error);
       return [];
     }
   }
@@ -256,23 +288,31 @@ export class MetadataServiceSQL {
     try {
       await databaseService.transaction(async (client) => {
         // Delete preview data
-        await client.query('DELETE FROM preview_data WHERE content_id = $1', [id]);
-        
+        await client.query("DELETE FROM preview_data WHERE content_id = $1", [
+          id,
+        ]);
+
         // Delete platform content
-        await client.query('DELETE FROM platform_content WHERE content_id = $1', [id]);
-        
+        await client.query(
+          "DELETE FROM platform_content WHERE content_id = $1",
+          [id]
+        );
+
         // Delete main content metadata
-        const result = await client.query('DELETE FROM content_metadata WHERE id = $1', [id]);
-        
+        const result = await client.query(
+          "DELETE FROM content_metadata WHERE id = $1",
+          [id]
+        );
+
         if (result.rowCount === 0) {
-          throw new Error('Content metadata not found');
+          throw new Error("Content metadata not found");
         }
       });
 
       console.log(`Metadata deleted from database: ${id}`);
       return true;
     } catch (error) {
-      console.error('Failed to delete metadata from database:', error);
+      console.error("Failed to delete metadata from database:", error);
       return false;
     }
   }
@@ -286,7 +326,7 @@ export class MetadataServiceSQL {
     // 簡易的な実装: 環境変数やdatabaseServiceの状態で判定
     try {
       // テスト用のPostgreSQLクエリを実行してみる
-      await databaseService.query('SELECT 1', []);
+      await databaseService.query("SELECT 1", []);
       return true; // PostgreSQLが使用されている
     } catch (error) {
       return false; // SQLiteにフォールバックしている
@@ -307,10 +347,13 @@ export class MetadataServiceSQL {
           mimeType: row.mime_type,
           duration: row.duration,
           userId: row.user_id,
-          createdAt: typeof row.created_at === 'string' ? row.created_at : row.created_at.toISOString(),
-          generatedContent: JSON.parse(row.generated_content || '[]'),
+          createdAt:
+            typeof row.created_at === "string"
+              ? row.created_at
+              : row.created_at.toISOString(),
+          generatedContent: JSON.parse(row.generated_content || "[]"),
           previewData: null,
-          usedPrompts: this.parseUsedPrompts(row.used_prompts)
+          usedPrompts: this.parseUsedPrompts(row.used_prompts),
         });
       }
 
@@ -320,11 +363,13 @@ export class MetadataServiceSQL {
         content.previewData = {
           type: row.preview_type,
           duration: row.preview_duration,
-          waveform: row.waveform_data ? JSON.parse(row.waveform_data) : undefined,
+          waveform: row.waveform_data
+            ? JSON.parse(row.waveform_data)
+            : undefined,
           thumbnailUrl: row.thumbnail_base64,
           width: row.video_width,
           height: row.video_height,
-          transcript: row.transcript_preview
+          transcript: row.transcript_preview,
         };
       }
     }
@@ -332,18 +377,20 @@ export class MetadataServiceSQL {
     return Array.from(contentMap.values());
   }
 
-  private parseUsedPrompts(raw: any): Record<string, UsedPromptDetail> | undefined {
+  private parseUsedPrompts(
+    raw: any
+  ): Record<string, UsedPromptDetail> | undefined {
     if (!raw) {
       return undefined;
     }
 
     try {
-      const parsed = typeof raw === 'string' ? JSON.parse(raw) : raw;
-      if (parsed && typeof parsed === 'object') {
+      const parsed = typeof raw === "string" ? JSON.parse(raw) : raw;
+      if (parsed && typeof parsed === "object") {
         return parsed as Record<string, UsedPromptDetail>;
       }
     } catch (error) {
-      console.error('Failed to parse used prompts:', error);
+      console.error("Failed to parse used prompts:", error);
     }
 
     return undefined;

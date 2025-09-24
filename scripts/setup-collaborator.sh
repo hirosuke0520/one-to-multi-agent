@@ -145,7 +145,7 @@ API_PID=$!
 sleep 5
 
 # Test health endpoint
-API_URL="http://localhost:8787"
+API_URL="http://localhost:8080"
 echo "Testing API health check..."
 
 if curl -s -f "$API_URL/health" > /dev/null 2>&1; then
@@ -180,7 +180,7 @@ echo
 echo "For troubleshooting:"
 echo "• Run the debug script: ./scripts/debug-auth.sh"
 echo "• Check the setup guide: SETUP-COLLABORATORS.md"
-echo "• Test API directly: curl http://localhost:8787/health"
+echo "• Test API directly: curl http://localhost:8080/health"
 echo
 echo -e "${BLUE}💡 Pro tip: Use 'npm run dev' to start both services in development mode${NC}"
 

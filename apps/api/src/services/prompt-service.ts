@@ -1,6 +1,6 @@
-import { randomUUID } from 'crypto';
-import { databaseService } from './database-service.js';
-import { UserSettingsService } from './user-settings-service.js';
+import { randomUUID } from "crypto";
+import { databaseService } from "./database-service.js";
+import { UserSettingsService } from "./user-settings-service.js";
 
 export interface UserPrompt {
   user_id: string;
@@ -10,7 +10,13 @@ export interface UserPrompt {
   updated_at?: Date;
 }
 
-export type Platform = 'twitter' | 'instagram' | 'tiktok' | 'threads' | 'youtube' | 'blog';
+export type Platform =
+  | "twitter"
+  | "instagram"
+  | "tiktok"
+  | "threads"
+  | "youtube"
+  | "blog";
 
 export class PromptService {
   private userSettingsService: UserSettingsService;
@@ -25,12 +31,15 @@ export class PromptService {
   async getUserPrompts(userId: string): Promise<UserPrompt[]> {
     try {
       const result = await databaseService.query(
-        'SELECT * FROM user_prompts WHERE user_id = $1 ORDER BY platform',
+        "SELECT * FROM user_prompts WHERE user_id = $1 ORDER BY platform",
         [userId]
       );
       return result.rows;
     } catch (error) {
-      console.log('Database error in getUserPrompts, returning empty array:', error);
+      console.log(
+        "Database error in getUserPrompts, returning empty array:",
+        error
+      );
       return [];
     }
   }
@@ -38,15 +47,18 @@ export class PromptService {
   /**
    * 特定のプラットフォームのプロンプトを取得
    */
-  async getPromptByPlatform(userId: string, platform: Platform): Promise<UserPrompt | null> {
+  async getPromptByPlatform(
+    userId: string,
+    platform: Platform
+  ): Promise<UserPrompt | null> {
     try {
       const result = await databaseService.query(
-        'SELECT * FROM user_prompts WHERE user_id = $1 AND platform = $2',
+        "SELECT * FROM user_prompts WHERE user_id = $1 AND platform = $2",
         [userId, platform]
       );
       return result.rows[0] || null;
     } catch (error) {
-      console.log('Database error in getPromptByPlatform:', error);
+      console.log("Database error in getPromptByPlatform:", error);
       return null;
     }
   }
@@ -54,7 +66,11 @@ export class PromptService {
   /**
    * プロンプトを保存（新規作成または更新）
    */
-  async savePrompt(userId: string, platform: Platform, prompt: string): Promise<UserPrompt> {
+  async savePrompt(
+    userId: string,
+    platform: Platform,
+    prompt: string
+  ): Promise<UserPrompt> {
     try {
       // Ensure user exists
       await this.ensureUserExists(userId);
@@ -72,19 +88,22 @@ export class PromptService {
 
       // Get the saved record
       const result = await databaseService.query(
-        'SELECT * FROM user_prompts WHERE user_id = $1 AND platform = $2',
+        "SELECT * FROM user_prompts WHERE user_id = $1 AND platform = $2",
         [userId, platform]
       );
       return result.rows[0];
     } catch (error) {
-      console.log('Database error in savePrompt, returning mock object:', error);
+      console.log(
+        "Database error in savePrompt, returning mock object:",
+        error
+      );
       // データベースエラーの場合、モックオブジェクトを返す
       return {
         user_id: userId,
         platform,
         prompt,
         created_at: new Date(),
-        updated_at: new Date()
+        updated_at: new Date(),
       };
     }
   }
@@ -92,7 +111,10 @@ export class PromptService {
   /**
    * 複数のプロンプトを一括保存
    */
-  async saveMultiplePrompts(userId: string, prompts: { platform: Platform; prompt: string }[]): Promise<UserPrompt[]> {
+  async saveMultiplePrompts(
+    userId: string,
+    prompts: { platform: Platform; prompt: string }[]
+  ): Promise<UserPrompt[]> {
     try {
       // Ensure user exists
       await this.ensureUserExists(userId);
@@ -104,52 +126,34 @@ export class PromptService {
         for (const { platform, prompt } of prompts) {
           let result;
 
-          // PostgreSQL (we're not using SQLite anymore)
-          if (false && client.prepare) {
-            // SQLite (disabled)
-            const stmt = client.prepare(
-              `INSERT INTO user_prompts (user_id, platform, prompt, created_at, updated_at)
-               VALUES (?, ?, ?, ?, ?)
-               ON CONFLICT (user_id, platform)
-               DO UPDATE SET
-                 prompt = excluded.prompt,
-                 updated_at = ?`
-            );
-            stmt.run(userId, platform, prompt, now, now, now);
-
-            // Get the saved record
-            const selectStmt = client.prepare(
-              'SELECT * FROM user_prompts WHERE user_id = ? AND platform = ?'
-            );
-            const row = selectStmt.get(userId, platform);
-            savedPrompts.push(row);
-          } else {
-            // PostgreSQL
-            const queryResult = await client.query(
-              `INSERT INTO user_prompts (user_id, platform, prompt, created_at, updated_at)
-               VALUES ($1, $2, $3, $4, $5)
-               ON CONFLICT (user_id, platform)
-               DO UPDATE SET
-                 prompt = EXCLUDED.prompt,
-                 updated_at = EXCLUDED.updated_at
-               RETURNING *`,
-              [userId, platform, prompt, now, now]
-            );
-            savedPrompts.push(queryResult.rows[0]);
-          }
+          // PostgreSQL
+          const queryResult = await client.query(
+            `INSERT INTO user_prompts (user_id, platform, prompt, created_at, updated_at)
+             VALUES ($1, $2, $3, $4, $5)
+             ON CONFLICT (user_id, platform)
+             DO UPDATE SET
+               prompt = EXCLUDED.prompt,
+               updated_at = EXCLUDED.updated_at
+             RETURNING *`,
+            [userId, platform, prompt, now, now]
+          );
+          savedPrompts.push(queryResult.rows[0]);
         }
 
         return savedPrompts;
       });
     } catch (error) {
-      console.log('Database error in saveMultiplePrompts, returning mock objects:', error);
+      console.log(
+        "Database error in saveMultiplePrompts, returning mock objects:",
+        error
+      );
       // データベースエラーの場合、モックオブジェクトを返す
       return prompts.map(({ platform, prompt }) => ({
         user_id: userId,
         platform,
         prompt,
         created_at: new Date(),
-        updated_at: new Date()
+        updated_at: new Date(),
       }));
     }
   }
@@ -160,12 +164,12 @@ export class PromptService {
   async deletePrompt(userId: string, platform: Platform): Promise<boolean> {
     try {
       const result = await databaseService.query(
-        'DELETE FROM user_prompts WHERE user_id = $1 AND platform = $2',
+        "DELETE FROM user_prompts WHERE user_id = $1 AND platform = $2",
         [userId, platform]
       );
       return (result.rowCount ?? 0) > 0;
     } catch (error) {
-      console.log('Database error in deletePrompt:', error);
+      console.log("Database error in deletePrompt:", error);
       return false;
     }
   }
@@ -176,23 +180,26 @@ export class PromptService {
   async deleteAllPrompts(userId: string): Promise<boolean> {
     try {
       const result = await databaseService.query(
-        'DELETE FROM user_prompts WHERE user_id = $1',
+        "DELETE FROM user_prompts WHERE user_id = $1",
         [userId]
       );
       return (result.rowCount ?? 0) > 0;
     } catch (error) {
-      console.log('Database error in deleteAllPrompts:', error);
+      console.log("Database error in deleteAllPrompts:", error);
       return false;
     }
   }
 
   private async ensureUserExists(userId: string): Promise<void> {
     try {
-      const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(userId);
+      const isUuid =
+        /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(
+          userId
+        );
 
       if (isUuid) {
         const existingById = await databaseService.query(
-          'SELECT 1 FROM users WHERE id = $1',
+          "SELECT 1 FROM users WHERE id = $1",
           [userId]
         );
 
@@ -218,7 +225,7 @@ export class PromptService {
       }
 
       const existingByGoogleId = await databaseService.query(
-        'SELECT 1 FROM users WHERE google_id = $1',
+        "SELECT 1 FROM users WHERE google_id = $1",
         [userId]
       );
 
@@ -242,7 +249,7 @@ export class PromptService {
         ]
       );
     } catch (error) {
-      console.log('Failed to ensure user exists:', error);
+      console.log("Failed to ensure user exists:", error);
     }
   }
 
@@ -251,12 +258,14 @@ export class PromptService {
    */
   async getCombinedPrompt(userId: string, platform: Platform): Promise<string> {
     // グローバルキャラクタープロンプトを取得
-    const globalPrompt = await this.userSettingsService.getGlobalCharacterPrompt(userId) ||
-                         this.userSettingsService.getDefaultGlobalCharacterPrompt();
+    const globalPrompt =
+      (await this.userSettingsService.getGlobalCharacterPrompt(userId)) ||
+      this.userSettingsService.getDefaultGlobalCharacterPrompt();
 
     // プラットフォーム固有のプロンプトを取得
     const userPrompt = await this.getPromptByPlatform(userId, platform);
-    const platformPrompt = userPrompt?.prompt || this.getDefaultPrompts()[platform];
+    const platformPrompt =
+      userPrompt?.prompt || this.getDefaultPrompts()[platform];
 
     // 組み合わせて返す
     return `${globalPrompt}\n\n${platformPrompt}`;
@@ -266,11 +275,24 @@ export class PromptService {
    * 複数プラットフォームの統合プロンプトを取得
    */
   async getCombinedPrompts(userId: string): Promise<Record<Platform, string>> {
-    const platforms: Platform[] = ['twitter', 'instagram', 'tiktok', 'threads', 'youtube', 'blog'];
-    const combinedPrompts: Record<Platform, string> = {} as Record<Platform, string>;
+    const platforms: Platform[] = [
+      "twitter",
+      "instagram",
+      "tiktok",
+      "threads",
+      "youtube",
+      "blog",
+    ];
+    const combinedPrompts: Record<Platform, string> = {} as Record<
+      Platform,
+      string
+    >;
 
     for (const platform of platforms) {
-      combinedPrompts[platform] = await this.getCombinedPrompt(userId, platform);
+      combinedPrompts[platform] = await this.getCombinedPrompt(
+        userId,
+        platform
+      );
     }
 
     return combinedPrompts;
@@ -281,12 +303,17 @@ export class PromptService {
    */
   getDefaultPrompts(): Record<Platform, string> {
     return {
-      twitter: 'Twitterに最適化されたコンテンツを生成してください。280文字以内で簡潔に、ハッシュタグを効果的に使用してください。',
-      instagram: 'Instagramに最適化されたコンテンツを生成してください。視覚的魅力を重視し、ハッシュタグを最大30個まで含めてください。',
-      tiktok: 'TikTokに最適化されたコンテンツを生成してください。若年層に刺さる、トレンドを意識した内容にしてください。',
-      threads: 'Threadsに最適化されたコンテンツを生成してください。会話を促進し、コミュニティ感を重視した内容にしてください。',
-      youtube: 'YouTubeに最適化されたコンテンツを生成してください。タイトル、説明文、台本を含めて詳細に作成してください。',
-      blog: 'ブログに最適化されたコンテンツを生成してください。SEOを意識し、詳細で価値のある情報を提供してください。'
+      twitter:
+        "Twitterに最適化されたコンテンツを生成してください。280文字以内で簡潔に、ハッシュタグを効果的に使用してください。",
+      instagram:
+        "Instagramに最適化されたコンテンツを生成してください。視覚的魅力を重視し、ハッシュタグを最大30個まで含めてください。",
+      tiktok:
+        "TikTokに最適化されたコンテンツを生成してください。若年層に刺さる、トレンドを意識した内容にしてください。",
+      threads:
+        "Threadsに最適化されたコンテンツを生成してください。会話を促進し、コミュニティ感を重視した内容にしてください。",
+      youtube:
+        "YouTubeに最適化されたコンテンツを生成してください。タイトル、説明文、台本を含めて詳細に作成してください。",
+      blog: "ブログに最適化されたコンテンツを生成してください。SEOを意識し、詳細で価値のある情報を提供してください。",
     };
   }
 }

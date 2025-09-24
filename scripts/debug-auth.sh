@@ -55,7 +55,7 @@ echo
 echo -e "${YELLOW}📡 Step 2: API Connection Check${NC}"
 echo "------------------------------"
 
-API_BASE="${NEXT_PUBLIC_API_URL:-http://localhost:8787}"
+API_BASE="${NEXT_PUBLIC_API_URL:-http://localhost:8080}"
 echo "Testing API base URL: $API_BASE"
 
 # Health check

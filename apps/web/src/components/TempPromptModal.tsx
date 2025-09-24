@@ -1,6 +1,6 @@
-'use client';
+"use client";
 
-import { useState, useEffect, useCallback, useMemo } from 'react';
+import { useState, useEffect, useCallback, useMemo } from "react";
 
 // type Platform = 'twitter' | 'instagram' | 'tiktok' | 'threads' | 'youtube' | 'blog';
 
@@ -14,16 +14,16 @@ interface TempPromptModalProps {
 }
 
 const platformLabels: Record<string, string> = {
-  twitter: 'X (Twitter)',
-  instagram: 'Instagram',
-  tiktok: 'TikTok',
-  threads: 'Threads',
-  youtube: 'YouTube',
-  wordpress: 'WordPress（ブログ）'
+  twitter: "X (Twitter)",
+  instagram: "Instagram",
+  tiktok: "TikTok",
+  threads: "Threads",
+  youtube: "YouTube",
+  wordpress: "WordPress（ブログ）",
 };
 
 const platformMapping: Record<string, string> = {
-  wordpress: 'blog'
+  wordpress: "blog",
 };
 
 export function TempPromptModal({
@@ -32,34 +32,32 @@ export function TempPromptModal({
   selectedPlatforms,
   onSavePrompts,
   initialPrompts,
-  token
+  token,
 }: TempPromptModalProps) {
   const [tempPrompts, setTempPrompts] = useState<Record<string, string>>({});
   const [loading, setLoading] = useState(false);
 
-  const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8787';
+  const apiUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8080";
 
   // プラットフォームIDを正規化（wordpress -> blog）
-  const normalizedPlatforms = useMemo(() =>
-    selectedPlatforms.map(p => platformMapping[p] || p),
+  const normalizedPlatforms = useMemo(
+    () => selectedPlatforms.map((p) => platformMapping[p] || p),
     [selectedPlatforms]
   );
-
 
   useEffect(() => {
     if (isOpen) {
       // 初期プロンプトを設定
       const initial: Record<string, string> = {};
-      normalizedPlatforms.forEach(platform => {
-        initial[platform] = initialPrompts[platform] || '';
+      normalizedPlatforms.forEach((platform) => {
+        initial[platform] = initialPrompts[platform] || "";
       });
       setTempPrompts(initial);
-
     }
   }, [isOpen, normalizedPlatforms, initialPrompts]);
 
   const handlePromptChange = (platform: string, value: string) => {
-    setTempPrompts(prev => ({ ...prev, [platform]: value }));
+    setTempPrompts((prev) => ({ ...prev, [platform]: value }));
   };
 
   const handleSaveToDatabase = async () => {
@@ -67,24 +65,24 @@ export function TempPromptModal({
     try {
       // データベースに保存
       const response = await fetch(`${apiUrl}/prompts/batch`, {
-        method: 'POST',
+        method: "POST",
         headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
         },
-        body: JSON.stringify({ prompts: tempPrompts })
+        body: JSON.stringify({ prompts: tempPrompts }),
       });
 
       if (!response.ok) {
-        throw new Error('Failed to save prompts to database');
+        throw new Error("Failed to save prompts to database");
       }
 
       // 一時プロンプトとしても設定
       onSavePrompts(tempPrompts);
       onClose();
     } catch (error) {
-      console.error('Error saving prompts to database:', error);
-      alert('プロンプトの保存に失敗しました');
+      console.error("Error saving prompts to database:", error);
+      alert("プロンプトの保存に失敗しました");
     } finally {
       setLoading(false);
     }
@@ -109,8 +107,18 @@ export function TempPromptModal({
             onClick={onClose}
             className="text-gray-400 hover:text-gray-600 transition-colors"
           >
-            <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+            <svg
+              className="w-6 h-6"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M6 18L18 6M6 6l12 12"
+              />
             </svg>
           </button>
         </div>
@@ -118,11 +126,17 @@ export function TempPromptModal({
         <div className="flex-1 overflow-y-auto p-6">
           <div className="space-y-4">
             {normalizedPlatforms.map((platform) => {
-              const displayPlatform = Object.keys(platformMapping).find(key => platformMapping[key] === platform) || platform;
+              const displayPlatform =
+                Object.keys(platformMapping).find(
+                  (key) => platformMapping[key] === platform
+                ) || platform;
               const label = platformLabels[displayPlatform] || displayPlatform;
 
               return (
-                <div key={platform} className="border border-gray-200 rounded-lg p-4">
+                <div
+                  key={platform}
+                  className="border border-gray-200 rounded-lg p-4"
+                >
                   <label
                     htmlFor={`temp-prompt-${platform}`}
                     className="block text-sm font-medium text-gray-700 mb-2"
@@ -131,16 +145,18 @@ export function TempPromptModal({
                   </label>
                   <textarea
                     id={`temp-prompt-${platform}`}
-                    value={tempPrompts[platform] || ''}
-                    onChange={(e) => handlePromptChange(platform, e.target.value)}
+                    value={tempPrompts[platform] || ""}
+                    onChange={(e) =>
+                      handlePromptChange(platform, e.target.value)
+                    }
                     className="w-full p-3 border-2 border-gray-300 rounded-lg resize-y focus:outline-none focus:ring-2 focus:border-blue-500 focus:ring-blue-200 bg-white text-black"
                     style={{
-                      minHeight: '100px',
-                      lineHeight: '1.5',
-                      color: '#000000 !important',
-                      backgroundColor: '#ffffff !important',
-                      fontSize: '16px',
-                      fontFamily: 'Arial, sans-serif'
+                      minHeight: "100px",
+                      lineHeight: "1.5",
+                      color: "#000000 !important",
+                      backgroundColor: "#ffffff !important",
+                      fontSize: "16px",
+                      fontFamily: "Arial, sans-serif",
                     }}
                     rows={4}
                     placeholder={`${label}用のプロンプトを入力してください (空の場合はデフォルトプロンプトが使用されます)`}
@@ -176,7 +192,7 @@ export function TempPromptModal({
                   保存中...
                 </>
               ) : (
-                '設定を保存して使用'
+                "設定を保存して使用"
               )}
             </button>
           </div>

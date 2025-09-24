@@ -22,7 +22,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         const apiUrl =
           process.env.INTERNAL_API_URL ||
           process.env.NEXT_PUBLIC_API_URL ||
-          "http://localhost:8787";
+          "http://localhost:8080";
 
         try {
           const response = await fetch(`${apiUrl}/auth/signin`, {
@@ -45,7 +45,10 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
               const data = await response.json();
               dbUserId = data.userId;
             } catch (parseError) {
-              console.error("Failed to parse auth/signin response:", parseError);
+              console.error(
+                "Failed to parse auth/signin response:",
+                parseError
+              );
             }
           } else {
             console.error("Failed to sync user with API:", response.status);

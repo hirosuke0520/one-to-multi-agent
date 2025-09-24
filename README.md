@@ -1,6 +1,6 @@
 # One to Multi Agent
 
-🚀 **コンテンツ発信者が1つのソース（動画/文章/音声）から、各プラットフォームの文脈・制約・アルゴリズムに最適化した派生コンテンツを半自動生成し、最小の手間で公開まで到達できるワークフローを提供するサービス。**
+🚀 **コンテンツ発信者が 1 つのソース（動画/文章/音声）から、各プラットフォームの文脈・制約・アルゴリズムに最適化した派生コンテンツを半自動生成し、最小の手間で公開まで到達できるワークフローを提供するサービス。**
 
 ## 🤝 共同作業者向けクイックスタート
 
@@ -16,6 +16,7 @@
 ```
 
 **必須環境変数** (詳細は `.env.example` を参照):
+
 - `AUTH_GOOGLE_ID` / `AUTH_GOOGLE_SECRET` - Google OAuth
 - `AUTH_SECRET` - NextAuth secret
 - `NEXT_PUBLIC_API_URL` - API エンドポイント
@@ -71,9 +72,9 @@ infra/
 
 ### 📋 必要な環境
 
-- **Node.js 18以上**
+- **Node.js 18 以上**
 - **Docker & Docker Compose** (推奨)
-- **gcloud CLI** (GCP連携用)
+- **gcloud CLI** (GCP 連携用)
 - **Git**
 
 ### 📥 1. リポジトリのクローン
@@ -94,11 +95,11 @@ gcloud config set project one-to-multi-agent-80339
 gcloud services enable firebase.googleapis.com firestore.googleapis.com
 ```
 
-> **💡 注意:** GCPセットアップをスキップしても、モック実装で動作確認可能です
+> **💡 注意:** GCP セットアップをスキップしても、モック実装で動作確認可能です
 
 ### 🚀 3. ローカル起動方法
 
-#### 方法1: Docker Compose（推奨）
+#### 方法 1: Docker Compose（推奨）
 
 ```bash
 # 一発起動（依存関係インストール込み）
@@ -114,7 +115,7 @@ gcloud services enable firebase.googleapis.com firestore.googleapis.com
 ./infra/docker/dev.sh stop
 ```
 
-#### 方法2: 個別起動
+#### 方法 2: 個別起動
 
 ```bash
 # 1. 依存関係インストール
@@ -131,20 +132,22 @@ npm run dev
 
 ### 🌐 4. アクセス先
 
-起動後、以下のURLにアクセス可能です：
+起動後、以下の URL にアクセス可能です：
 
 - **🖥️ フロントエンド:** http://localhost:3000
-- **🔧 API サーバー:** http://localhost:8787
-- **📊 API ドキュメント:** http://localhost:8787 (JSON)
+- **🔧 API サーバー:** http://localhost:8080
+- **📊 API ドキュメント:** http://localhost:8080 (JSON)
 
 ### ✅ 5. 動作確認手順
 
 1. **ブラウザでアクセス**
+
    ```
    http://localhost:3000
    ```
 
 2. **サンプルテキストを入力**
+
    ```
    今日は新しいAIツールについて紹介します。
    このツールを使うことで、コンテンツ制作者が効率的に作業できるようになります。
@@ -152,6 +155,7 @@ npm run dev
    ```
 
 3. **投稿先プラットフォームを選択**
+
    - ✅ Threads
    - ✅ WordPress
    - ✅ YouTube
@@ -160,23 +164,25 @@ npm run dev
 4. **「コンテンツを生成」ボタンをクリック**
 
 5. **結果を確認**
-   - AI分析結果（タイトル、要約、キーポイント）
+   - AI 分析結果（タイトル、要約、キーポイント）
    - プラットフォーム別の最適化コンテンツ
-   - 投稿URLs（モック）
+   - 投稿 URLs（モック）
 
 ### 🔧 6. トラブルシューティング
 
 #### ポートが使用中のエラー
+
 ```bash
 # ポート確認
 lsof -i :3000
-lsof -i :8787
+lsof -i :8080
 
 # プロセス終了
 kill -9 <PID>
 ```
 
-#### Docker関連の問題
+#### Docker 関連の問題
+
 ```bash
 # Docker状況確認
 docker ps
@@ -187,6 +193,7 @@ docker compose -f infra/docker/compose.yml ps
 ```
 
 #### npm install エラー
+
 ```bash
 # キャッシュクリア
 npm cache clean --force
@@ -200,10 +207,10 @@ npm install
 
 ```bash
 # API動作確認
-curl http://localhost:8787
+curl http://localhost:8080
 
 # コンテンツ処理テスト
-curl -X POST http://localhost:8787/orchestrator/process \
+curl -X POST http://localhost:8080/orchestrator/process \
   -H "Content-Type: application/json" \
   -d '{
     "sourceType": "text",
@@ -212,12 +219,13 @@ curl -X POST http://localhost:8787/orchestrator/process \
   }'
 
 # 結果をjqで整形（jqインストール済みの場合）
-curl -s http://localhost:8787 | jq .
+curl -s http://localhost:8080 | jq .
 ```
 
 ## 🎯 デモフロー
 
 ### 入力例
+
 ```
 今日は新しいAIツールについて紹介します。
 このツールを使うことで、コンテンツ制作者が効率的に作業できるようになります。
@@ -226,19 +234,21 @@ curl -s http://localhost:8787 | jq .
 
 ### 出力例
 
-**🧠 AI分析結果:**
+**🧠 AI 分析結果:**
+
 - **タイトル:** 新しいプロダクトの紹介
 - **要約:** 革新的な新プロダクトについて紹介します。このツールはコンテンツ制作者にとって非常に価値があります。
 - **キーポイント:** 自動文字起こし機能、多言語対応、リアルタイム処理、高精度音声認識、コンテンツ制作者向けツール
 
-**📱 Threads投稿:**
+**📱 Threads 投稿:**
+
 ```
 🚀 新しいプロダクトの紹介
 
 革新的な新プロダクトについて紹介します。このツールはコンテンツ制作者にとって非常に価値があります。
 
 ✨ 主な特徴：
-• 自動文字起こし機能  
+• 自動文字起こし機能
 • 多言語対応
 • リアルタイム処理
 
@@ -247,18 +257,21 @@ curl -s http://localhost:8787 | jq .
 #AI #コンテンツ制作 #音声認識 #プロダクト #技術
 ```
 
-**📰 WordPress記事:**
+**📰 WordPress 記事:**
+
 ```markdown
 # 新しいプロダクトの紹介
 
 ## 概要
+
 革新的な新プロダクトについて紹介します。このツールはコンテンツ制作者にとって非常に価値があります。
 
 ## 主な機能・特徴
+
 1. **自動文字起こし機能**
-2. **多言語対応** 
+2. **多言語対応**
 3. **リアルタイム処理**
-...
+   ...
 ```
 
 ## 🔧 開発者向け
@@ -289,7 +302,7 @@ GET /jobs/{jobId}/results
 
 ```bash
 # API テスト
-curl -X POST http://localhost:8787/orchestrator/process \
+curl -X POST http://localhost:8080/orchestrator/process \
   -H "Content-Type: application/json" \
   -d '{"sourceType": "text", "content": "...", "targets": ["threads"]}'
 
@@ -310,7 +323,7 @@ GCP_PROJECT_ID=one-to-multi-agent-80339
 GOOGLE_APPLICATION_CREDENTIALS=./gcp-service-account-key.json
 
 # API設定
-NEXT_PUBLIC_API_URL=http://localhost:8787
+NEXT_PUBLIC_API_URL=http://localhost:8080
 
 # プラットフォーム API キー（実際の値に置き換え）
 YOUTUBE_CLIENT_ID=your_client_id
@@ -334,7 +347,7 @@ one-to-multi-agent/
 ├── packages/
 │   ├── ai/               # AI サービス（STT, LLM）
 │   ├── adapters/         # プラットフォーム連携
-│   ├── core/             # 共通型・ロジック  
+│   ├── core/             # 共通型・ロジック
 │   └── ui/               # 共有コンポーネント
 ├── infra/
 │   └── docker/           # Docker設定
@@ -356,7 +369,7 @@ one-to-multi-agent/
 
 ## 🎉 今後の予定
 
-- [ ] 実際のGoogle Cloud API統合
+- [ ] 実際の Google Cloud API 統合
 - [ ] 画像・サムネイル自動生成
 - [ ] スケジュール投稿機能
 - [ ] アナリティクス収集

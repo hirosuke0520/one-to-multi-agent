@@ -1,72 +1,85 @@
-import { auth } from '@/auth';
-import { CombinedPromptForm } from '@/app/settings/prompts/CombinedPromptForm';
-import { redirect } from 'next/navigation';
+import { auth } from "@/auth";
+import { CombinedPromptForm } from "@/app/settings/prompts/CombinedPromptForm";
+import { redirect } from "next/navigation";
 
 interface Prompts {
   [key: string]: string;
 }
 
-
 async function fetchPrompts(token: string): Promise<Prompts> {
-  const apiUrl = process.env.INTERNAL_API_URL || process.env.NEXT_PUBLIC_API_URL || 'http://api:8787';
+  const apiUrl =
+    process.env.INTERNAL_API_URL ||
+    process.env.NEXT_PUBLIC_API_URL ||
+    "http://api:8080";
 
   try {
     const response = await fetch(`${apiUrl}/prompts`, {
       headers: {
-        'Authorization': `Bearer ${token}`
+        Authorization: `Bearer ${token}`,
       },
-      cache: 'no-store'
+      cache: "no-store",
     });
 
     if (!response.ok) {
-      console.error('Failed to fetch prompts:', response.status);
+      console.error("Failed to fetch prompts:", response.status);
       return {};
     }
 
     const data = await response.json();
     return data.prompts || {};
   } catch (error) {
-    console.error('Error fetching prompts:', error);
+    console.error("Error fetching prompts:", error);
     return {};
   }
 }
 
-
 async function fetchGlobalCharacterPrompt(token: string): Promise<string> {
-  const apiUrl = process.env.INTERNAL_API_URL || process.env.NEXT_PUBLIC_API_URL || 'http://api:8787';
+  const apiUrl =
+    process.env.INTERNAL_API_URL ||
+    process.env.NEXT_PUBLIC_API_URL ||
+    "http://api:8080";
 
   try {
-    const response = await fetch(`${apiUrl}/user-settings/global-character-prompt`, {
-      headers: {
-        'Authorization': `Bearer ${token}`
-      },
-      cache: 'no-store'
-    });
+    const response = await fetch(
+      `${apiUrl}/user-settings/global-character-prompt`,
+      {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+        cache: "no-store",
+      }
+    );
 
     if (!response.ok) {
-      console.error('Failed to fetch global character prompt:', response.status);
-      return 'あなたは親しみやすく、創造性豊かなコンテンツクリエイターです。読者・視聴者に価値のある情報を分かりやすく、魅力的に伝えることを心がけています。';
+      console.error(
+        "Failed to fetch global character prompt:",
+        response.status
+      );
+      return "あなたは親しみやすく、創造性豊かなコンテンツクリエイターです。読者・視聴者に価値のある情報を分かりやすく、魅力的に伝えることを心がけています。";
     }
 
     const data = await response.json();
-    return data.globalCharacterPrompt || 'あなたは親しみやすく、創造性豊かなコンテンツクリエイターです。読者・視聴者に価値のある情報を分かりやすく、魅力的に伝えることを心がけています。';
+    return (
+      data.globalCharacterPrompt ||
+      "あなたは親しみやすく、創造性豊かなコンテンツクリエイターです。読者・視聴者に価値のある情報を分かりやすく、魅力的に伝えることを心がけています。"
+    );
   } catch (error) {
-    console.error('Error fetching global character prompt:', error);
-    return 'あなたは親しみやすく、創造性豊かなコンテンツクリエイターです。読者・視聴者に価値のある情報を分かりやすく、魅力的に伝えることを心がけています。';
+    console.error("Error fetching global character prompt:", error);
+    return "あなたは親しみやすく、創造性豊かなコンテンツクリエイターです。読者・視聴者に価値のある情報を分かりやすく、魅力的に伝えることを心がけています。";
   }
 }
 
 export default async function PromptsPage() {
   const session = await auth();
   if (!session?.user) {
-    redirect('/');
+    redirect("/");
   }
 
   const token = session.user.id;
 
   if (!token) {
-    console.error('No user ID found in session');
-    redirect('/');
+    console.error("No user ID found in session");
+    redirect("/");
   }
 
   const prompts = await fetchPrompts(token);

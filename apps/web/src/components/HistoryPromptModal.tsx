@@ -1,6 +1,6 @@
-'use client';
+"use client";
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect } from "react";
 
 interface HistoryPromptModalProps {
   isOpen: boolean;
@@ -20,13 +20,13 @@ interface HistoryPrompt {
 }
 
 const platformLabels: Record<string, string> = {
-  twitter: 'X (Twitter)',
-  instagram: 'Instagram',
-  tiktok: 'TikTok',
-  threads: 'Threads',
-  youtube: 'YouTube',
-  wordpress: 'WordPress（ブログ）',
-  blog: 'ブログ'
+  twitter: "X (Twitter)",
+  instagram: "Instagram",
+  tiktok: "TikTok",
+  threads: "Threads",
+  youtube: "YouTube",
+  wordpress: "WordPress（ブログ）",
+  blog: "ブログ",
 };
 
 export function HistoryPromptModal({
@@ -34,14 +34,14 @@ export function HistoryPromptModal({
   onClose,
   threadId,
   platforms,
-  token
+  token,
 }: HistoryPromptModalProps) {
   const [prompts, setPrompts] = useState<HistoryPrompt[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [copyNotification, setCopyNotification] = useState<string | null>(null);
 
-  const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8787';
+  const apiUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8080";
 
   useEffect(() => {
     if (isOpen) {
@@ -57,35 +57,40 @@ export function HistoryPromptModal({
       // 履歴データからプロンプト情報を取得
       const response = await fetch(`${apiUrl}/history/${threadId}/prompts`, {
         headers: {
-          'Authorization': `Bearer ${token}`
+          Authorization: `Bearer ${token}`,
         },
-        cache: 'no-store'
+        cache: "no-store",
       });
 
       if (!response.ok) {
         // APIエンドポイントが存在しない場合は、デフォルトメッセージを表示
         if (response.status === 404) {
-          setPrompts(platforms.map(platform => ({
-            platform,
-            generationPrompt: '履歴からプロンプト情報を取得できませんでした。この機能は今後のバージョンで利用可能になります。'
-          })));
+          setPrompts(
+            platforms.map((platform) => ({
+              platform,
+              generationPrompt:
+                "履歴からプロンプト情報を取得できませんでした。この機能は今後のバージョンで利用可能になります。",
+            }))
+          );
         } else {
-          throw new Error('Failed to fetch history prompts');
+          throw new Error("Failed to fetch history prompts");
         }
       } else {
         const data = await response.json();
         if (data.success === false) {
-          throw new Error(data.error || 'Failed to fetch history prompts');
+          throw new Error(data.error || "Failed to fetch history prompts");
         }
         setPrompts(data.prompts || []);
       }
     } catch (error) {
-      console.error('Error fetching history prompts:', error);
+      console.error("Error fetching history prompts:", error);
       // エラー時はプレースホルダーメッセージを表示
-      setPrompts(platforms.map(platform => ({
-        platform,
-        generationPrompt: '履歴からプロンプト情報を取得できませんでした。'
-      })));
+      setPrompts(
+        platforms.map((platform) => ({
+          platform,
+          generationPrompt: "履歴からプロンプト情報を取得できませんでした。",
+        }))
+      );
     } finally {
       setLoading(false);
     }
@@ -97,7 +102,7 @@ export function HistoryPromptModal({
       setCopyNotification(`${label}をコピーしました`);
       setTimeout(() => setCopyNotification(null), 2000);
     } catch (error) {
-      console.error('Failed to copy to clipboard:', error);
+      console.error("Failed to copy to clipboard:", error);
     }
   };
 
@@ -114,8 +119,18 @@ export function HistoryPromptModal({
             onClick={onClose}
             className="text-gray-400 hover:text-gray-600 transition-colors"
           >
-            <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+            <svg
+              className="w-6 h-6"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M6 18L18 6M6 6l12 12"
+              />
             </svg>
           </button>
         </div>
@@ -124,7 +139,9 @@ export function HistoryPromptModal({
           {loading && (
             <div className="flex items-center justify-center py-8">
               <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
-              <span className="ml-3 text-gray-600">プロンプト情報を取得中...</span>
+              <span className="ml-3 text-gray-600">
+                プロンプト情報を取得中...
+              </span>
             </div>
           )}
 
@@ -137,11 +154,17 @@ export function HistoryPromptModal({
           {!loading && !error && (
             <div className="space-y-6">
               {prompts.map((promptData) => {
-                const label = platformLabels[promptData.platform] || promptData.platform;
+                const label =
+                  platformLabels[promptData.platform] || promptData.platform;
 
                 return (
-                  <div key={promptData.platform} className="border border-gray-200 rounded-lg p-4">
-                    <h3 className="text-lg font-medium text-gray-900 mb-3">{label}</h3>
+                  <div
+                    key={promptData.platform}
+                    className="border border-gray-200 rounded-lg p-4"
+                  >
+                    <h3 className="text-lg font-medium text-gray-900 mb-3">
+                      {label}
+                    </h3>
 
                     {promptData.generationPrompt ? (
                       <div className="space-y-4">
@@ -151,11 +174,26 @@ export function HistoryPromptModal({
                               生成時に使用されたプロンプト
                             </label>
                             <button
-                              onClick={() => copyToClipboard(promptData.generationPrompt!, `${label}のプロンプト`)}
+                              onClick={() =>
+                                copyToClipboard(
+                                  promptData.generationPrompt!,
+                                  `${label}のプロンプト`
+                                )
+                              }
                               className="text-sm text-blue-600 hover:text-blue-800 flex items-center gap-1"
                             >
-                              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
+                              <svg
+                                className="w-4 h-4"
+                                fill="none"
+                                stroke="currentColor"
+                                viewBox="0 0 24 24"
+                              >
+                                <path
+                                  strokeLinecap="round"
+                                  strokeLinejoin="round"
+                                  strokeWidth={2}
+                                  d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"
+                                />
                               </svg>
                               コピー
                             </button>
@@ -175,11 +213,26 @@ export function HistoryPromptModal({
                                 グローバルキャラクタープロンプト
                               </label>
                               <button
-                                onClick={() => copyToClipboard(promptData.globalCharacterPrompt!, 'グローバルキャラクタープロンプト')}
+                                onClick={() =>
+                                  copyToClipboard(
+                                    promptData.globalCharacterPrompt!,
+                                    "グローバルキャラクタープロンプト"
+                                  )
+                                }
                                 className="text-sm text-blue-600 hover:text-blue-800 flex items-center gap-1"
                               >
-                                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
+                                <svg
+                                  className="w-4 h-4"
+                                  fill="none"
+                                  stroke="currentColor"
+                                  viewBox="0 0 24 24"
+                                >
+                                  <path
+                                    strokeLinecap="round"
+                                    strokeLinejoin="round"
+                                    strokeWidth={2}
+                                    d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"
+                                  />
                                 </svg>
                                 コピー
                               </button>
@@ -200,11 +253,26 @@ export function HistoryPromptModal({
                                 プラットフォーム固有プロンプト
                               </label>
                               <button
-                                onClick={() => copyToClipboard(promptData.platformPrompt!, 'プラットフォーム固有プロンプト')}
+                                onClick={() =>
+                                  copyToClipboard(
+                                    promptData.platformPrompt!,
+                                    "プラットフォーム固有プロンプト"
+                                  )
+                                }
                                 className="text-sm text-blue-600 hover:text-blue-800 flex items-center gap-1"
                               >
-                                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
+                                <svg
+                                  className="w-4 h-4"
+                                  fill="none"
+                                  stroke="currentColor"
+                                  viewBox="0 0 24 24"
+                                >
+                                  <path
+                                    strokeLinecap="round"
+                                    strokeLinejoin="round"
+                                    strokeWidth={2}
+                                    d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"
+                                  />
                                 </svg>
                                 コピー
                               </button>
@@ -225,11 +293,26 @@ export function HistoryPromptModal({
                                 一時プロンプト
                               </label>
                               <button
-                                onClick={() => copyToClipboard(promptData.customPrompt!, '一時プロンプト')}
+                                onClick={() =>
+                                  copyToClipboard(
+                                    promptData.customPrompt!,
+                                    "一時プロンプト"
+                                  )
+                                }
                                 className="text-sm text-blue-600 hover:text-blue-800 flex items-center gap-1"
                               >
-                                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
+                                <svg
+                                  className="w-4 h-4"
+                                  fill="none"
+                                  stroke="currentColor"
+                                  viewBox="0 0 24 24"
+                                >
+                                  <path
+                                    strokeLinecap="round"
+                                    strokeLinejoin="round"
+                                    strokeWidth={2}
+                                    d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"
+                                  />
                                 </svg>
                                 コピー
                               </button>
