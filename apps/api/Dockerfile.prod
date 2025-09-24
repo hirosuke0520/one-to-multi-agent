@@ -49,7 +49,7 @@ ENV STORAGE_TYPE=gcs
 WORKDIR /app/apps/api
 
 # Expose the port
-EXPOSE 8787
+EXPOSE 8080
 
 # Run the application
 CMD ["node", "dist/index.js"]

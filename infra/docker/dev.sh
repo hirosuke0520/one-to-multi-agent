@@ -64,7 +64,7 @@ start_services() {
     echo
     echo -e "${YELLOW}🌐 Available services:${NC}"
     echo "  - Web (Next.js): http://localhost:3000"
-    echo "  - API (Hono):    http://localhost:8787"
+    echo "  - API (Hono):    http://localhost:8080"
     echo
     echo -e "${YELLOW}💡 To view logs:${NC}"
     echo "  docker compose -f infra/docker/compose.yml logs -f"

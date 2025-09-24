@@ -11,7 +11,7 @@ WORKDIR /app
 RUN mkdir -p /app/apps/api/data /app/apps/api/temp /app/apps/api/storage
 
 # Expose port
-EXPOSE 8787
+EXPOSE 8080
 
 WORKDIR /app/apps/api
 

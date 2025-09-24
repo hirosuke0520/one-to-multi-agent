@@ -1,6 +1,7 @@
 import { Hono } from 'hono';
 import { authMiddleware } from '../middlewares/auth.js';
 import { PromptService, Platform } from '../services/prompt-service.js';
+import { UserSettingsService } from '../services/user-settings-service.js';
 
 type Variables = {
   userId: string;
@@ -10,6 +11,7 @@ type Variables = {
 
 const app = new Hono<{ Variables: Variables }>();
 const promptService = new PromptService();
+const userSettingsService = new UserSettingsService();
 
 // 全てのエンドポイントに認証を適用
 app.use('*', authMiddleware);
@@ -38,6 +40,37 @@ app.get('/', async (c) => {
   } catch (error) {
     console.error('Error fetching prompts:', error);
     return c.json({ error: 'Failed to fetch prompts' }, 500);
+  }
+});
+
+// 統合プロンプト（グローバルキャラクター + プラットフォーム固有）を取得
+app.get('/combined', async (c) => {
+  try {
+    const userId = c.get('userId') as string;
+    const prompts = await promptService.getUserPrompts(userId);
+
+    // グローバルキャラクタープロンプトを取得
+    const globalCharacterPrompt = await userSettingsService.getGlobalCharacterPrompt(userId);
+    const defaultGlobalPrompt = userSettingsService.getDefaultGlobalCharacterPrompt();
+    const characterPrompt = globalCharacterPrompt || defaultGlobalPrompt;
+
+    // デフォルトプロンプトとマージ
+    const defaultPrompts = promptService.getDefaultPrompts();
+    const combinedPrompts: Record<string, string> = {};
+
+    // 各プラットフォームの統合プロンプトを生成
+    Object.keys(defaultPrompts).forEach((platform) => {
+      const userPrompt = prompts.find(p => p.platform === platform);
+      const platformPrompt = userPrompt?.prompt || defaultPrompts[platform as Platform];
+
+      // キャラクタープロンプト + プラットフォーム固有プロンプト
+      combinedPrompts[platform] = `${characterPrompt}\n\n${platformPrompt}`;
+    });
+
+    return c.json({ prompts: combinedPrompts });
+  } catch (error) {
+    console.error('Error fetching combined prompts:', error);
+    return c.json({ error: 'Failed to fetch combined prompts' }, 500);
   }
 });
 
@@ -157,6 +190,30 @@ app.delete('/', async (c) => {
   } catch (error) {
     console.error('Error resetting prompts:', error);
     return c.json({ error: 'Failed to reset prompts' }, 500);
+  }
+});
+
+
+// 特定プラットフォームの統合プロンプトを取得
+app.get('/combined/:platform', async (c) => {
+  try {
+    const userId = c.get('userId') as string;
+    const platform = c.req.param('platform') as Platform;
+
+    const validPlatforms: Platform[] = ['twitter', 'instagram', 'tiktok', 'threads', 'youtube', 'blog'];
+    if (!validPlatforms.includes(platform)) {
+      return c.json({ error: 'Invalid platform' }, 400);
+    }
+
+    const combinedPrompt = await promptService.getCombinedPrompt(userId, platform);
+
+    return c.json({
+      platform,
+      combinedPrompt
+    });
+  } catch (error) {
+    console.error('Error fetching combined prompt:', error);
+    return c.json({ error: 'Failed to fetch combined prompt' }, 500);
   }
 });
 

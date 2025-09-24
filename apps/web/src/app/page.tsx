@@ -1,5 +1,5 @@
 import { Suspense } from 'react';
-import { auth } from '../../auth';
+import { auth } from '@/auth';
 import HomeContent from './HomeContent';
 
 export default async function Home() {
@@ -11,7 +11,7 @@ export default async function Home() {
         <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
       </div>
     }>
-      <HomeContent userId={session?.user?.id} isAuthenticated={!!session} />
+      <HomeContent token={session?.user?.id} isAuthenticated={!!session} />
     </Suspense>
   );
 }

@@ -1,6 +1,5 @@
 import { Hono } from "hono";
 import { cors } from "hono/cors";
-import { Pool } from 'pg';
 import { UserService } from "../services/user-service.js";
 
 const auth = new Hono();
@@ -14,16 +13,7 @@ auth.use('/*', cors({
   credentials: true
 }));
 
-// PostgreSQL接続プール
-const pool = new Pool({
-  host: process.env.DB_HOST || 'postgres',
-  user: process.env.DB_USER || 'postgres',
-  password: process.env.DB_PASSWORD || 'postgres',
-  database: process.env.DB_NAME || 'postgres',
-  port: parseInt(process.env.DB_PORT || '5432'),
-});
-
-const userService = new UserService(pool);
+const userService = new UserService();
 
 /**
  * Google認証コールバック

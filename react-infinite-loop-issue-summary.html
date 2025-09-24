@@ -1,0 +1,277 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>React無限ループ問題 解決レポート</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            line-height: 1.6;
+            color: #333;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f9f9f9;
+        }
+        .container {
+            background-color: white;
+            padding: 40px;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        h1 {
+            color: #e53e3e;
+            border-bottom: 3px solid #e53e3e;
+            padding-bottom: 10px;
+        }
+        h2 {
+            color: #2d3748;
+            border-left: 4px solid #4299e1;
+            padding-left: 15px;
+            margin-top: 30px;
+        }
+        h3 {
+            color: #4a5568;
+            margin-top: 25px;
+        }
+        pre {
+            background-color: #f7fafc;
+            border: 1px solid #e2e8f0;
+            border-radius: 6px;
+            padding: 16px;
+            overflow-x: auto;
+            font-family: 'Courier New', monospace;
+            font-size: 14px;
+        }
+        code {
+            background-color: #f7fafc;
+            padding: 2px 6px;
+            border-radius: 3px;
+            font-family: 'Courier New', monospace;
+            color: #e53e3e;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 20px 0;
+        }
+        th, td {
+            border: 1px solid #e2e8f0;
+            padding: 12px;
+            text-align: left;
+        }
+        th {
+            background-color: #f7fafc;
+            font-weight: bold;
+            color: #2d3748;
+        }
+        tr:nth-child(even) {
+            background-color: #f9f9f9;
+        }
+        .problem {
+            background-color: #fed7d7;
+            border-left: 4px solid #e53e3e;
+            padding: 15px;
+            margin: 15px 0;
+            border-radius: 4px;
+        }
+        .solution {
+            background-color: #c6f6d5;
+            border-left: 4px solid #38a169;
+            padding: 15px;
+            margin: 15px 0;
+            border-radius: 4px;
+        }
+        .checklist {
+            list-style-type: none;
+            padding-left: 0;
+        }
+        .checklist li:before {
+            content: "☐ ";
+            color: #4299e1;
+            font-weight: bold;
+        }
+        ol {
+            padding-left: 20px;
+        }
+        ol li {
+            margin: 8px 0;
+        }
+        .footer {
+            margin-top: 40px;
+            padding-top: 20px;
+            border-top: 1px solid #e2e8f0;
+            text-align: center;
+            color: #718096;
+            font-style: italic;
+        }
+        @media print {
+            body {
+                background-color: white;
+            }
+            .container {
+                box-shadow: none;
+                padding: 20px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>React無限ループ問題 解決レポート</h1>
+
+        <h2>概要</h2>
+        <p>一時プロンプト設定モーダルで発生した「Maximum update depth exceeded」エラーの原因分析と解決方法についてまとめています。</p>
+
+        <h2>発生した問題</h2>
+
+        <h3>エラーメッセージ</h3>
+        <div class="problem">
+            <pre>Maximum update depth exceeded. This can happen when a component calls setState inside useEffect, but useEffect either doesn't have a dependency array, or one of the dependencies changes on every render.</pre>
+        </div>
+
+        <h3>症状</h3>
+        <ul>
+            <li>コンソールに無限にログが出力される</li>
+            <li><code>tempPrompts state changed: {twitter: ''}</code> が繰り返し表示</li>
+            <li>UIの応答性が著しく低下</li>
+            <li>テキスト入力が正常に動作しない</li>
+        </ul>
+
+        <h2>根本原因</h2>
+
+        <h3>問題のあったコード</h3>
+        <pre><code>// 問題: 毎回新しい配列が作成される
+const normalizedPlatforms = selectedPlatforms.map(p => platformMapping[p] || p);
+
+useEffect(() => {
+  if (isOpen) {
+    // 初期プロンプトを設定
+    const initial: Record&lt;string, string&gt; = {};
+    normalizedPlatforms.forEach(platform => {
+      initial[platform] = initialPrompts[platform] || '';
+    });
+    setTempPrompts(initial);
+    // ...
+  }
+}, [isOpen, selectedPlatforms, initialPrompts, normalizedPlatforms]); // ← 問題の依存配列</code></pre>
+
+        <h3>無限ループのメカニズム</h3>
+        <ol>
+            <li><strong>コンポーネントレンダリング時</strong>: <code>normalizedPlatforms</code>が毎回新しい配列として作成される</li>
+            <li><strong>useEffect実行</strong>: 依存配列に<code>normalizedPlatforms</code>が含まれているため、useEffectが実行される</li>
+            <li><strong>状態更新</strong>: <code>setTempPrompts()</code>により状態が更新される</li>
+            <li><strong>再レンダリング</strong>: 状態更新によりコンポーネントが再レンダリングされる</li>
+            <li><strong>手順1に戻る</strong>: 新しい<code>normalizedPlatforms</code>配列が作成され、無限ループが発生</li>
+        </ol>
+
+        <h3>技術的な詳細</h3>
+        <ul>
+            <li>JavaScriptでは、<code>array.map()</code>は常に新しい配列を返すため、参照が変わる</li>
+            <li>Reactの依存配列比較は浅い比較（shallow comparison）を使用</li>
+            <li>配列の内容が同じでも、参照が異なれば「変更あり」と判定される</li>
+        </ul>
+
+        <h2>解決方法</h2>
+
+        <h3>1. useMemoによる配列の安定化</h3>
+        <div class="solution">
+            <pre><code>// 修正後: useMemoで配列を安定化
+const normalizedPlatforms = useMemo(() =>
+  selectedPlatforms.map(p => platformMapping[p] || p),
+  [selectedPlatforms]  // selectedPlatformsが変更された時のみ再計算
+);</code></pre>
+        </div>
+
+        <h3>2. useEffectの依存配列最適化</h3>
+        <div class="solution">
+            <pre><code>useEffect(() => {
+  if (isOpen) {
+    // 初期プロンプトを設定
+    const initial: Record&lt;string, string&gt; = {};
+    normalizedPlatforms.forEach(platform => {
+      initial[platform] = initialPrompts[platform] || '';
+    });
+    setTempPrompts(initial);
+    // ...
+  }
+}, [isOpen, normalizedPlatforms, initialPrompts]); // 安定化された依存配列</code></pre>
+        </div>
+
+        <h2>修正前後の比較</h2>
+        <table>
+            <thead>
+                <tr>
+                    <th>項目</th>
+                    <th>修正前</th>
+                    <th>修正後</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td>配列作成</td>
+                    <td>毎レンダリング時に新規作成</td>
+                    <td>useMemoで必要時のみ作成</td>
+                </tr>
+                <tr>
+                    <td>依存配列</td>
+                    <td>不安定な参照を含む</td>
+                    <td>安定した参照のみ</td>
+                </tr>
+                <tr>
+                    <td>パフォーマンス</td>
+                    <td>無限ループで極めて悪い</td>
+                    <td>正常なレンダリングサイクル</td>
+                </tr>
+                <tr>
+                    <td>メモリ使用量</td>
+                    <td>無制限に増加</td>
+                    <td>適切に管理</td>
+                </tr>
+            </tbody>
+        </table>
+
+        <h2>学んだこと</h2>
+
+        <h3>React Hooksのベストプラクティス</h3>
+        <ol>
+            <li><strong>useMemo/useCallbackの適切な使用</strong>: 参照の安定性が重要な場合は積極的に使用</li>
+            <li><strong>依存配列の慎重な設計</strong>: 不要な再実行を避けるため、必要最小限の依存関係を指定</li>
+            <li><strong>デバッグの重要性</strong>: 適切なログとエラーハンドリングで問題の早期発見</li>
+        </ol>
+
+        <h3>パフォーマンス最適化の原則</h3>
+        <ol>
+            <li><strong>参照等価性の理解</strong>: Reactの比較メカニズムを理解する</li>
+            <li><strong>副作用の最小化</strong>: useEffect内での状態更新は慎重に行う</li>
+            <li><strong>プロファイリング</strong>: React DevToolsを使用した問題特定</li>
+        </ol>
+
+        <h2>予防策</h2>
+
+        <h3>コードレビューチェックリスト</h3>
+        <ul class="checklist">
+            <li>useEffectの依存配列に不安定な参照が含まれていないか</li>
+            <li>useMemo/useCallbackが適切に使用されているか</li>
+            <li>無限ループの可能性がある箇所はないか</li>
+        </ul>
+
+        <h3>開発時の注意点</h3>
+        <ul>
+            <li>コンポーネント内で配列やオブジェクトを直接作成する場合は要注意</li>
+            <li>useEffectの依存配列は可能な限り安定した値を使用</li>
+            <li>React DevToolsのProfilerを活用した定期的なパフォーマンスチェック</li>
+        </ul>
+
+        <h2>結論</h2>
+        <p>今回の問題は、Reactの基本的な仕組み（参照等価性、レンダリングサイクル）を理解していれば予防可能でした。useMemoによる最適化と適切な依存配列の設計により、問題を根本的に解決できました。</p>
+
+        <div class="footer">
+            <p><em>日付: 2025年9月21日</em></p>
+            <p><em>プロジェクト: One-to-Multi Agent</em></p>
+            <p><em>担当: Claude Code Assistant</em></p>
+        </div>
+    </div>
+</body>
+</html>

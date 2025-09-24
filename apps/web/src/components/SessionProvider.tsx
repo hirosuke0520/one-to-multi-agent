@@ -1,13 +1,18 @@
 "use client";
 
+import { SessionProvider as NextAuthSessionProvider } from "next-auth/react";
+import { Session } from "next-auth";
 import { ReactNode } from "react";
 
 interface Props {
   children: ReactNode;
+  session?: Session | null;
 }
 
-// NextAuth v5ではSessionProviderは不要になりました
-// セッション情報はサーバーコンポーネントで取得します
-export function SessionProvider({ children }: Props) {
-  return <>{children}</>;
+export function SessionProvider({ children, session }: Props) {
+  return (
+    <NextAuthSessionProvider session={session}>
+      {children}
+    </NextAuthSessionProvider>
+  );
 }

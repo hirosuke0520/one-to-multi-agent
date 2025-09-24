@@ -177,7 +177,7 @@ GOOGLE_APPLICATION_CREDENTIALS=./gcp-service-account-key.json
 FIREBASE_PROJECT_ID=$PROJECT_ID
 
 # API Configuration
-NEXT_PUBLIC_API_URL=http://localhost:8787
+NEXT_PUBLIC_API_URL=http://localhost:8080
 
 # Platform APIs (set these with your actual keys)
 YOUTUBE_CLIENT_ID=

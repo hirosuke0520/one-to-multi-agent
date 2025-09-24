@@ -37,7 +37,23 @@ export interface JobResults {
   platformResults: PlatformResult[];
 }
 
-export const useContentGenerator = (userId?: string) => {
+const normalizePlatformId = (platform: string) => (platform === 'wordpress' ? 'blog' : platform);
+
+const normalizeCustomPrompts = (prompts?: Record<string, string>) => {
+  if (!prompts) {
+    return undefined;
+  }
+
+  const normalized: Record<string, string> = {};
+  for (const [platform, prompt] of Object.entries(prompts)) {
+    if (typeof prompt === 'string' && prompt.trim().length > 0) {
+      normalized[normalizePlatformId(platform)] = prompt;
+    }
+  }
+  return Object.keys(normalized).length > 0 ? normalized : undefined;
+};
+
+export const useContentGenerator = (token?: string) => {
   const [sourceType, setSourceType] = useState<'text' | 'audio' | 'video'>('text');
   const [content, setContent] = useState('');
   const [file, setFile] = useState<File | null>(null);
@@ -48,7 +64,7 @@ export const useContentGenerator = (userId?: string) => {
   const [error, setError] = useState<string | null>(null);
   const { refreshHistory } = useHistory();
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent, customPrompts?: Record<string, string>) => {
     e.preventDefault();
     setIsProcessing(true);
     setError(null);
@@ -58,16 +74,21 @@ export const useContentGenerator = (userId?: string) => {
     try {
       const apiUrl = getApiUrl();
       let response: Response;
+      const promptsPayload = normalizeCustomPrompts(customPrompts);
 
       if (sourceType === 'text') {
+        const headers: HeadersInit = { 'Content-Type': 'application/json' };
+        if (token) {
+          headers['Authorization'] = `Bearer ${token}`;
+        }
         response = await fetch(`${apiUrl}/orchestrator/process`, {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ 
-            sourceType, 
-            content, 
+          headers,
+          body: JSON.stringify({
+            sourceType,
+            content,
             targets,
-            userId
+            customPrompts: promptsPayload,
           }),
         });
       } else {
@@ -76,11 +97,16 @@ export const useContentGenerator = (userId?: string) => {
         formData.append('file', file);
         formData.append('sourceType', sourceType);
         formData.append('targets', JSON.stringify(targets));
-        if (userId) {
-          formData.append('userId', userId);
+        if (promptsPayload) {
+          formData.append('customPrompts', JSON.stringify(promptsPayload));
+        }
+        const headers: HeadersInit = {};
+        if (token) {
+          headers['Authorization'] = `Bearer ${token}`;
         }
         response = await fetch(`${apiUrl}/orchestrator/process`, {
           method: 'POST',
+          headers,
           body: formData,
         });
       }
@@ -227,10 +253,6 @@ export const useContentGenerator = (userId?: string) => {
     setIsProcessing(false);
   };
 
-  const handlePublish = async (platform: string) => {
-    alert(`Publishing for ${platform}... (Not implemented)`);
-  };
-
   const updateEditableContent = (platform: string, field: string, value: string | string[]) => {
     setEditableContent((prev) => ({
       ...prev,
@@ -263,7 +285,6 @@ export const useContentGenerator = (userId?: string) => {
     editableContent,
     error,
     handleSubmit,
-    handlePublish,
     updateEditableContent,
     resetForm,
   };
