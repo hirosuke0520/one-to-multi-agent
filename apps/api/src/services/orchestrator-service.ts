@@ -5,7 +5,11 @@ import { ContentService } from "./content-service.js";
 import { PublisherService } from "./publisher-service.js";
 import { StoredFile } from "./file-storage-service.js";
 import { getStorageService } from "../config/storage.js";
-import { MetadataServiceSQL, ContentMetadata, PlatformContent } from "./metadata-service-sql.js";
+import {
+  MetadataServiceSQL,
+  ContentMetadata,
+  PlatformContent,
+} from "./metadata-service-sql.js";
 import { PreviewService } from "./preview-service.js";
 import { VideoConverterService } from "./video-converter-service.js";
 import { ContentSource } from "@one-to-multi-agent/core";
@@ -102,25 +106,25 @@ export class OrchestratorService {
   async createJob(request: ProcessJobRequest): Promise<string> {
     await this.ensureInitialized();
     const jobId = uuidv4();
-    
+
     let storedFile: StoredFile | undefined;
     let processedBuffer = request.fileBuffer;
-    
+
     // Convert video to H.264 if needed
-    if (request.fileBuffer && request.mimeType?.startsWith('video/')) {
-      console.log('Processing video for H.264 conversion...');
+    if (request.fileBuffer && request.mimeType?.startsWith("video/")) {
+      console.log("Processing video for H.264 conversion...");
       const conversionResult = await this.videoConverterService.processVideo(
         request.fileBuffer,
-        request.fileName || 'video.mp4',
+        request.fileName || "video.mp4",
         request.mimeType
       );
-      
+
       if (conversionResult.converted) {
-        console.log('Video converted to H.264 successfully');
+        console.log("Video converted to H.264 successfully");
         processedBuffer = conversionResult.buffer;
       }
     }
-    
+
     // Store original file to storage service if it's an audio/video file
     if (processedBuffer && request.fileName && request.mimeType) {
       storedFile = await this.fileStorageService.saveFile(
@@ -130,7 +134,7 @@ export class OrchestratorService {
       );
       console.log(`File stored: ${storedFile?.filePath}`);
     }
-    
+
     const job: Job = {
       id: jobId,
       sourceType: request.sourceType,
@@ -143,7 +147,7 @@ export class OrchestratorService {
     };
 
     await this.jobService.saveJob(job);
-    
+
     // Store the modified request (without fileBuffer) for processing
     const requestForStorage: ProcessJobRequest = {
       ...request,
@@ -151,30 +155,32 @@ export class OrchestratorService {
       storedFile,
     };
     await this.jobService.saveJobRequest(jobId, requestForStorage);
-    
+
     return jobId;
   }
 
-  async createJobs(request: ProcessJobRequest): Promise<{ jobs: Array<{ jobId: string; platform: string }> }> {
+  async createJobs(
+    request: ProcessJobRequest
+  ): Promise<{ jobs: Array<{ jobId: string; platform: string }> }> {
     await this.ensureInitialized();
     let storedFile: StoredFile | undefined;
     let processedBuffer = request.fileBuffer;
-    
+
     // Convert video to H.264 if needed
-    if (request.fileBuffer && request.mimeType?.startsWith('video/')) {
-      console.log('Processing video for H.264 conversion...');
+    if (request.fileBuffer && request.mimeType?.startsWith("video/")) {
+      console.log("Processing video for H.264 conversion...");
       const conversionResult = await this.videoConverterService.processVideo(
         request.fileBuffer,
-        request.fileName || 'video.mp4',
+        request.fileName || "video.mp4",
         request.mimeType
       );
-      
+
       if (conversionResult.converted) {
-        console.log('Video converted to H.264 successfully');
+        console.log("Video converted to H.264 successfully");
         processedBuffer = conversionResult.buffer;
       }
     }
-    
+
     // Store original file once if needed
     if (processedBuffer && request.fileName && request.mimeType) {
       storedFile = await this.fileStorageService.saveFile(
@@ -184,10 +190,10 @@ export class OrchestratorService {
       );
       console.log(`File stored: ${storedFile?.filePath}`);
     }
-    
+
     // Create single job for all target platforms
     const jobId = uuidv4();
-    
+
     const job: Job = {
       id: jobId,
       sourceType: request.sourceType,
@@ -199,30 +205,30 @@ export class OrchestratorService {
     };
 
     await this.jobService.saveJob(job);
-    
+
     // Create job request for all platforms
     const jobRequest: ProcessJobRequest = {
       ...request,
       fileBuffer: undefined, // Don't store buffer in job request
       storedFile,
-      targets: request.targets // All platforms
+      targets: request.targets, // All platforms
     };
-    
+
     await this.jobService.saveJobRequest(jobId, jobRequest);
-    
+
     // Return single job with all platforms
-    const jobs = request.targets.map(platform => ({ jobId, platform }));
-    
+    const jobs = request.targets.map((platform) => ({ jobId, platform }));
+
     return { jobs };
   }
 
   async processJob(jobId: string): Promise<void> {
     await this.ensureInitialized();
     let fileBuffer: Buffer | undefined;
-    
+
     try {
       await this.updateJobStatus(jobId, "processing");
-      
+
       const request = await this.jobService.getJobRequest(jobId);
       if (!request) {
         throw new Error("Job request not found");
@@ -230,30 +236,32 @@ export class OrchestratorService {
 
       // Step 1: Get content (text directly, or download file buffer from storage)
       let sourceContent: ContentSource;
-      
+
       if (request.sourceType === "text") {
         sourceContent = request.content || "";
       } else {
         // For audio/video, retrieve from storage service
         if (!request.storedFile) {
-          throw new Error("Stored file reference is required for audio/video content");
+          throw new Error(
+            "Stored file reference is required for audio/video content"
+          );
         }
-        
+
         const downloadedBuffer = await this.fileStorageService.getFile(
           request.storedFile.filePath
         );
-        
+
         if (!downloadedBuffer) {
           throw new Error("Failed to retrieve file from storage");
         }
-        
+
         fileBuffer = downloadedBuffer;
-        
+
         sourceContent = {
           fileBuffer: downloadedBuffer,
           fileName: request.storedFile.fileName,
           mimeType: request.storedFile.mimeType,
-          sourceType: request.sourceType
+          sourceType: request.sourceType,
         };
       }
 
@@ -263,17 +271,22 @@ export class OrchestratorService {
         throw new Error("No target platforms specified");
       }
 
-      const promptDetails = await this.preparePromptDetails(targets, request.userId, request.customPrompts);
+      const promptDetails = await this.preparePromptDetails(
+        targets,
+        request.userId,
+        request.customPrompts
+      );
 
       const platformResults = await Promise.allSettled(
         targets.map(async (target) => {
           try {
-            const platformContent = await this.contentService.generatePlatformContent(
-              sourceContent,
-              target,
-              request.profile,
-              promptDetails[target]?.finalPrompt
-            );
+            const platformContent =
+              await this.contentService.generatePlatformContent(
+                sourceContent,
+                target,
+                request.profile,
+                promptDetails[target]?.finalPrompt
+              );
             return {
               platform: target,
               success: true,
@@ -292,37 +305,51 @@ export class OrchestratorService {
 
       const resolvedPlatformResults = platformResults.map((result, index) => {
         const target = targets[index];
-        if (result.status === 'fulfilled') {
+        if (result.status === "fulfilled") {
           return result.value;
         } else {
           return {
             platform: target,
             success: false,
-            error: result.reason instanceof Error ? result.reason.message : "Generation failed",
+            error:
+              result.reason instanceof Error
+                ? result.reason.message
+                : "Generation failed",
           };
         }
       });
 
       // Step 3: Save results
-      const sourceText = typeof sourceContent === "string" ? sourceContent : 
-        `Audio/Video file: ${sourceContent.fileName}`;
-      
+      const sourceText =
+        typeof sourceContent === "string"
+          ? sourceContent
+          : `Audio/Video file: ${sourceContent.fileName}`;
+
       await this.jobService.saveJobResults(jobId, {
         sourceText,
         platformResults: resolvedPlatformResults,
       });
 
       // Step 4: Save metadata and generate preview (for history tracking)
-      await this.saveContentMetadata(jobId, request, resolvedPlatformResults, sourceContent, promptDetails);
+      await this.saveContentMetadata(
+        jobId,
+        request,
+        resolvedPlatformResults,
+        sourceContent,
+        promptDetails
+      );
 
       await this.updateJobStatus(jobId, "completed");
-      
+
       // Note: Keep audio files for playback functionality
       // await this.cleanupFiles(request);
-      
     } catch (error) {
       console.error(`Job ${jobId} failed:`, error);
-      await this.updateJobStatus(jobId, "failed", error instanceof Error ? error.message : "Unknown error");
+      await this.updateJobStatus(
+        jobId,
+        "failed",
+        error instanceof Error ? error.message : "Unknown error"
+      );
     } finally {
       // Clean up file buffer from memory
       if (fileBuffer) {
@@ -331,7 +358,11 @@ export class OrchestratorService {
     }
   }
 
-  private async updateJobStatus(jobId: string, status: Job["status"], error?: string): Promise<void> {
+  private async updateJobStatus(
+    jobId: string,
+    status: Job["status"],
+    error?: string
+  ): Promise<void> {
     const job = await this.jobService.getJob(jobId);
     if (job) {
       job.status = status;
@@ -346,7 +377,12 @@ export class OrchestratorService {
   private async saveContentMetadata(
     jobId: string,
     request: ProcessJobRequest,
-    platformResults: Array<{ platform: string; success: boolean; content?: any; error?: string }>,
+    platformResults: Array<{
+      platform: string;
+      success: boolean;
+      content?: any;
+      error?: string;
+    }>,
     sourceContent: ContentSource,
     promptDetails: Record<string, PromptDetail>
   ): Promise<void> {
@@ -361,7 +397,7 @@ export class OrchestratorService {
       };
 
       // Save source content based on type
-      if (request.sourceType === 'text' && request.content) {
+      if (request.sourceType === "text" && request.content) {
         // For text input, save the content directly
         metadata.sourceText = request.content;
       }
@@ -374,36 +410,42 @@ export class OrchestratorService {
         metadata.size = request.storedFile.size;
 
         // Generate preview and extract text for audio/video files
-        if (request.sourceType === 'audio' || request.sourceType === 'video') {
+        if (request.sourceType === "audio" || request.sourceType === "video") {
           try {
             // Retrieve the file temporarily for preview generation and transcription
             const fileBuffer = await this.fileStorageService.getFile(
               request.storedFile.filePath
             );
-            
+
             if (fileBuffer) {
-              const fs = await import('fs');
-              const tempFilePath = `/tmp/preview_${Date.now()}_${request.storedFile.fileName}`;
+              const fs = await import("fs");
+              const tempFilePath = `/tmp/preview_${Date.now()}_${
+                request.storedFile.fileName
+              }`;
               fs.writeFileSync(tempFilePath, fileBuffer);
-              
+
               // Generate preview data
-              console.log(`Generating ${request.sourceType} preview for: ${tempFilePath}`);
-              if (request.sourceType === 'audio') {
-                metadata.previewData = await this.previewService.generateAudioPreview(tempFilePath);
-                console.log('Audio preview generated:', metadata.previewData);
+              console.log(
+                `Generating ${request.sourceType} preview for: ${tempFilePath}`
+              );
+              if (request.sourceType === "audio") {
+                metadata.previewData =
+                  await this.previewService.generateAudioPreview(tempFilePath);
+                console.log("Audio preview generated:", metadata.previewData);
               } else {
-                metadata.previewData = await this.previewService.generateVideoPreview(tempFilePath);
-                console.log('Video preview generated:', metadata.previewData);
+                metadata.previewData =
+                  await this.previewService.generateVideoPreview(tempFilePath);
+                console.log("Video preview generated:", metadata.previewData);
               }
-              
+
               // Note: Transcription is handled by Gemini during content generation
               // We don't store transcribed text separately to avoid duplication
-              
+
               // Clean up temp file
               await this.previewService.cleanup([tempFilePath]);
             }
           } catch (previewError) {
-            console.warn('Failed to generate preview:', previewError);
+            console.warn("Failed to generate preview:", previewError);
             // Continue without preview data
           }
         }
@@ -411,7 +453,7 @@ export class OrchestratorService {
 
       // Transform platform results to metadata format
       metadata.generatedContent = platformResults
-        .filter(result => result.success && result.content)
+        .filter((result) => result.success && result.content)
         .map((result): PlatformContent => {
           const content = result.content;
           return {
@@ -447,9 +489,8 @@ export class OrchestratorService {
       // Save metadata to database
       await this.metadataService.saveMetadata(metadata);
       console.log(`Metadata saved for job ${jobId}: ${metadata.id}`);
-      
     } catch (error) {
-      console.error('Failed to save content metadata:', error);
+      console.error("Failed to save content metadata:", error);
       // Don't throw error - this should not fail the job
     }
   }
@@ -461,15 +502,19 @@ export class OrchestratorService {
         const deleted = await this.fileStorageService.deleteFile(
           request.storedFile.filePath
         );
-        
+
         if (deleted) {
-          console.log(`Cleaned up uploaded file: ${request.storedFile.fileName}`);
+          console.log(
+            `Cleaned up uploaded file: ${request.storedFile.fileName}`
+          );
         } else {
-          console.warn(`Failed to cleanup uploaded file: ${request.storedFile.fileName}`);
+          console.warn(
+            `Failed to cleanup uploaded file: ${request.storedFile.fileName}`
+          );
         }
       }
     } catch (error) {
-      console.error('Error during file cleanup:', error);
+      console.error("Error during file cleanup:", error);
       // Don't throw error - this should not fail the job
     }
   }
@@ -480,12 +525,21 @@ export class OrchestratorService {
     }
 
     const lower = platform.toLowerCase();
-    if (lower === 'wordpress') {
-      return 'blog';
+    if (lower === "wordpress") {
+      return "blog";
     }
 
-    const validPlatforms: PromptPlatform[] = ['twitter', 'instagram', 'tiktok', 'threads', 'youtube', 'blog'];
-    return validPlatforms.includes(lower as PromptPlatform) ? (lower as PromptPlatform) : undefined;
+    const validPlatforms: PromptPlatform[] = [
+      "twitter",
+      "instagram",
+      "tiktok",
+      "threads",
+      "youtube",
+      "blog",
+    ];
+    return validPlatforms.includes(lower as PromptPlatform)
+      ? (lower as PromptPlatform)
+      : undefined;
   }
 
   private async preparePromptDetails(
@@ -498,27 +552,36 @@ export class OrchestratorService {
 
     if (customPrompts) {
       for (const [platform, prompt] of Object.entries(customPrompts)) {
-        if (typeof prompt !== 'string') {
+        if (typeof prompt !== "string") {
           continue;
         }
         const trimmed = prompt.trim();
         if (!trimmed) {
           continue;
         }
-        const normalized = this.normalizePlatform(platform) || this.normalizePlatform(platform.toLowerCase());
+        const normalized =
+          this.normalizePlatform(platform) ||
+          this.normalizePlatform(platform.toLowerCase());
         if (normalized) {
           normalizedCustomPrompts[normalized] = trimmed;
         }
       }
     }
 
-    const defaultGlobalPrompt = this.userSettingsService.getDefaultGlobalCharacterPrompt();
+    const defaultGlobalPrompt =
+      this.userSettingsService.getDefaultGlobalCharacterPrompt();
     let globalPrompt = defaultGlobalPrompt;
     if (userId) {
-      const savedGlobal = await this.userSettingsService.getGlobalCharacterPrompt(userId);
+      const savedGlobal =
+        await this.userSettingsService.getGlobalCharacterPrompt(userId);
       if (savedGlobal && savedGlobal.trim().length > 0) {
         globalPrompt = savedGlobal;
+        console.log(`✅ Using custom global character prompt for user ${userId}`);
+      } else {
+        console.log(`📝 Using default global character prompt for user ${userId}`);
       }
+    } else {
+      console.log("⚠️ No userId provided, using default global prompt");
     }
 
     const defaultPlatformPrompts = this.promptService.getDefaultPrompts();
@@ -537,9 +600,15 @@ export class OrchestratorService {
 
       let platformPrompt = defaultPlatformPrompts[normalized];
       if (userId) {
-        const savedPrompt = await this.promptService.getPromptByPlatform(userId, normalized);
+        const savedPrompt = await this.promptService.getPromptByPlatform(
+          userId,
+          normalized
+        );
         if (savedPrompt?.prompt && savedPrompt.prompt.trim().length > 0) {
           platformPrompt = savedPrompt.prompt;
+          console.log(`✅ Using custom ${normalized} prompt for user ${userId}`);
+        } else {
+          console.log(`📝 Using default ${normalized} prompt for user ${userId}`);
         }
       }
 
@@ -563,11 +632,17 @@ export class OrchestratorService {
   }
 
   // New method for getting content history
-  async getContentHistory(userId?: string, limit = 20): Promise<ContentMetadata[]> {
+  async getContentHistory(
+    userId?: string,
+    limit = 20
+  ): Promise<ContentMetadata[]> {
     return await this.metadataService.listMetadata(userId, limit);
   }
 
-  async getContentMetadata(id: string, userId?: string): Promise<ContentMetadata | null> {
+  async getContentMetadata(
+    id: string,
+    userId?: string
+  ): Promise<ContentMetadata | null> {
     const metadata = await this.metadataService.getMetadata(id);
     if (!metadata) {
       return null;

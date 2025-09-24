@@ -1,20 +1,23 @@
 "use client";
 
-import { useState, useEffect } from 'react';
-import { useRouter, useSearchParams } from 'next/navigation';
-import { useContentGenerator } from '../hooks/useContentGenerator';
-import { SourceForm } from '../components/SourceForm';
-import { ResultsDisplay } from '../components/ResultsDisplay';
-import { Sidebar } from '../components/Sidebar';
-import { ThreadView } from '../components/ThreadView';
-import { useSidebar } from '../contexts/SidebarContext';
+import { useState, useEffect } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
+import { useContentGenerator } from "../hooks/useContentGenerator";
+import { SourceForm } from "../components/SourceForm";
+import { ResultsDisplay } from "../components/ResultsDisplay";
+import { Sidebar } from "../components/Sidebar";
+import { ThreadView } from "../components/ThreadView";
+import { useSidebar } from "../contexts/SidebarContext";
 
 interface HomeContentProps {
-  userId?: string;
+  token?: string;
   isAuthenticated?: boolean;
 }
 
-export default function HomeContent({ userId, isAuthenticated }: HomeContentProps) {
+export default function HomeContent({
+  token,
+  isAuthenticated,
+}: HomeContentProps) {
   const router = useRouter();
   const searchParams = useSearchParams();
   const [selectedThreadId, setSelectedThreadId] = useState<string | null>(null);
@@ -22,10 +25,10 @@ export default function HomeContent({ userId, isAuthenticated }: HomeContentProp
   const { isSidebarOpen, closeSidebar } = useSidebar();
 
   useEffect(() => {
-    const threadId = searchParams.get('thread');
+    const threadId = searchParams.get("thread");
     setSelectedThreadId(threadId);
   }, [searchParams]);
-  
+
   const {
     sourceType,
     setSourceType,
@@ -41,13 +44,13 @@ export default function HomeContent({ userId, isAuthenticated }: HomeContentProp
     handleSubmit,
     updateEditableContent,
     resetForm,
-  } = useContentGenerator(userId);
+  } = useContentGenerator(token);
 
   const handleNewChat = () => {
     setSelectedThreadId(null);
     resetForm();
     setTempPrompts({});
-    router.push('/');
+    router.push("/");
     closeSidebar(); // Close mobile sidebar
   };
 
@@ -56,7 +59,7 @@ export default function HomeContent({ userId, isAuthenticated }: HomeContentProp
     if (threadId) {
       router.push(`/?thread=${threadId}`);
     } else {
-      router.push('/');
+      router.push("/");
     }
     closeSidebar(); // Close mobile sidebar
   };
@@ -76,7 +79,7 @@ export default function HomeContent({ userId, isAuthenticated }: HomeContentProp
       {/* Main Content */}
       <div className="flex-1 flex flex-col md:ml-0">
         {selectedThreadId ? (
-          <ThreadView threadId={selectedThreadId} userId={userId} />
+          <ThreadView threadId={selectedThreadId} token={token} />
         ) : (
           <div className="flex-1 py-4 md:py-8">
             <div className="max-w-4xl mx-auto px-4 md:px-6 py-4 md:py-8">
@@ -99,7 +102,6 @@ export default function HomeContent({ userId, isAuthenticated }: HomeContentProp
                 setTargets={setTargets}
                 isProcessing={isProcessing}
                 handleSubmit={handleSubmit}
-                userId={userId}
                 isAuthenticated={isAuthenticated}
                 tempPrompts={tempPrompts}
                 onTempPromptsChange={(prompts) =>
@@ -110,7 +112,9 @@ export default function HomeContent({ userId, isAuthenticated }: HomeContentProp
               {isProcessing && !results && (
                 <div className="mt-4 md:mt-6 text-center">
                   <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-400 mx-auto"></div>
-                  <p className="mt-2 text-blue-300 text-sm md:text-base">コンテンツを処理中です...</p>
+                  <p className="mt-2 text-blue-300 text-sm md:text-base">
+                    コンテンツを処理中です...
+                  </p>
                 </div>
               )}
 

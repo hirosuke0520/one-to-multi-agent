@@ -47,10 +47,10 @@ interface ContentMetadata {
 
 interface ThreadViewProps {
   threadId: string;
-  userId?: string;
+  token?: string;
 }
 
-export function ThreadView({ threadId, userId }: ThreadViewProps) {
+export function ThreadView({ threadId, token }: ThreadViewProps) {
   const { data: session } = useSession();
   const [thread, setThread] = useState<ContentMetadata | null>(null);
   const [loading, setLoading] = useState(true);
@@ -63,18 +63,18 @@ export function ThreadView({ threadId, userId }: ThreadViewProps) {
     setError(null);
     
     try {
-      const token = session?.user?.id || userId;
-      if (!token) {
+      const authToken = session?.user?.id || token;
+      if (!authToken) {
         throw new Error('ユーザー情報が見つかりません。再ログインしてください。');
       }
 
       const url = `${getApiUrl()}/history`;
-      
+
       const response = await fetch(url, {
         method: 'GET',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`,
+          'Authorization': `Bearer ${authToken}`,
         },
       });
 
@@ -119,7 +119,7 @@ export function ThreadView({ threadId, userId }: ThreadViewProps) {
   useEffect(() => {
     fetchThread();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [threadId, userId, session?.user?.id]);
+  }, [threadId, token, session?.user?.id]);
 
   const formatDate = (dateString: string) => {
     return new Date(dateString).toLocaleString('ja-JP');
@@ -320,7 +320,7 @@ export function ThreadView({ threadId, userId }: ThreadViewProps) {
         <div className="mt-6 md:mt-8 space-y-4 md:space-y-6">
           <div className="flex items-center justify-between">
             <h2 className="text-xl md:text-2xl font-bold text-white">生成結果</h2>
-            {userId && session?.user?.id && (
+            {token && session?.user?.id && (
               <button
                 onClick={() => {
                   setIsPromptModalOpen(true);

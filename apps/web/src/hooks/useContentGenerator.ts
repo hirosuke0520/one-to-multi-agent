@@ -53,7 +53,7 @@ const normalizeCustomPrompts = (prompts?: Record<string, string>) => {
   return Object.keys(normalized).length > 0 ? normalized : undefined;
 };
 
-export const useContentGenerator = (userId?: string) => {
+export const useContentGenerator = (token?: string) => {
   const [sourceType, setSourceType] = useState<'text' | 'audio' | 'video'>('text');
   const [content, setContent] = useState('');
   const [file, setFile] = useState<File | null>(null);
@@ -77,14 +77,17 @@ export const useContentGenerator = (userId?: string) => {
       const promptsPayload = normalizeCustomPrompts(customPrompts);
 
       if (sourceType === 'text') {
+        const headers: HeadersInit = { 'Content-Type': 'application/json' };
+        if (token) {
+          headers['Authorization'] = `Bearer ${token}`;
+        }
         response = await fetch(`${apiUrl}/orchestrator/process`, {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ 
-            sourceType, 
-            content, 
+          headers,
+          body: JSON.stringify({
+            sourceType,
+            content,
             targets,
-            userId,
             customPrompts: promptsPayload,
           }),
         });
@@ -94,14 +97,16 @@ export const useContentGenerator = (userId?: string) => {
         formData.append('file', file);
         formData.append('sourceType', sourceType);
         formData.append('targets', JSON.stringify(targets));
-        if (userId) {
-          formData.append('userId', userId);
-        }
         if (promptsPayload) {
           formData.append('customPrompts', JSON.stringify(promptsPayload));
         }
+        const headers: HeadersInit = {};
+        if (token) {
+          headers['Authorization'] = `Bearer ${token}`;
+        }
         response = await fetch(`${apiUrl}/orchestrator/process`, {
           method: 'POST',
+          headers,
           body: formData,
         });
       }
