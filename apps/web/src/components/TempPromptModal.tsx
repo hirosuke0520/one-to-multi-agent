@@ -1,8 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback, useMemo } from "react";
-
-// type Platform = 'twitter' | 'instagram' | 'tiktok' | 'threads' | 'youtube' | 'blog';
+import { useState, useEffect, useMemo } from "react";
 
 interface TempPromptModalProps {
   isOpen: boolean;
@@ -32,12 +30,8 @@ export function TempPromptModal({
   selectedPlatforms,
   onSavePrompts,
   initialPrompts,
-  token,
 }: TempPromptModalProps) {
   const [tempPrompts, setTempPrompts] = useState<Record<string, string>>({});
-  const [loading, setLoading] = useState(false);
-
-  const apiUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8080";
 
   // プラットフォームIDを正規化（wordpress -> blog）
   const normalizedPlatforms = useMemo(
@@ -58,34 +52,6 @@ export function TempPromptModal({
 
   const handlePromptChange = (platform: string, value: string) => {
     setTempPrompts((prev) => ({ ...prev, [platform]: value }));
-  };
-
-  const handleSaveToDatabase = async () => {
-    setLoading(true);
-    try {
-      // データベースに保存
-      const response = await fetch(`${apiUrl}/prompts/batch`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
-        },
-        body: JSON.stringify({ prompts: tempPrompts }),
-      });
-
-      if (!response.ok) {
-        throw new Error("Failed to save prompts to database");
-      }
-
-      // 一時プロンプトとしても設定
-      onSavePrompts(tempPrompts);
-      onClose();
-    } catch (error) {
-      console.error("Error saving prompts to database:", error);
-      alert("プロンプトの保存に失敗しました");
-    } finally {
-      setLoading(false);
-    }
   };
 
   const handleUseForGeneration = () => {
@@ -181,24 +147,7 @@ export function TempPromptModal({
             >
               今回の生成に使用
             </button>
-            <button
-              onClick={handleSaveToDatabase}
-              disabled={loading}
-              className="px-6 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-            >
-              {loading ? (
-                <>
-                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2 inline-block"></div>
-                  保存中...
-                </>
-              ) : (
-                "設定を保存して使用"
-              )}
-            </button>
           </div>
-          <p className="text-xs text-gray-500 mt-3">
-            ※「今回の生成に使用」は一時的に使用し、「設定を保存して使用」はデータベースに保存して今後も使用します
-          </p>
         </div>
       </div>
     </div>

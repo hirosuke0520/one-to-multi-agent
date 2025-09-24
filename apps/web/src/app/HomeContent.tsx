@@ -8,6 +8,7 @@ import { ResultsDisplay } from "../components/ResultsDisplay";
 import { Sidebar } from "../components/Sidebar";
 import { ThreadView } from "../components/ThreadView";
 import { useSidebar } from "../contexts/SidebarContext";
+import { getApiUrl } from "../lib/config";
 
 interface HomeContentProps {
   token?: string;
@@ -22,12 +23,48 @@ export default function HomeContent({
   const searchParams = useSearchParams();
   const [selectedThreadId, setSelectedThreadId] = useState<string | null>(null);
   const [tempPrompts, setTempPrompts] = useState<Record<string, string>>({});
+  const [userPrompts, setUserPrompts] = useState<Record<string, string>>({});
+  const [modifiedPrompts, setModifiedPrompts] = useState<
+    Record<string, boolean>
+  >({});
+  const [loadingPrompts, setLoadingPrompts] = useState(false);
   const { isSidebarOpen, closeSidebar } = useSidebar();
 
   useEffect(() => {
     const threadId = searchParams.get("thread");
     setSelectedThreadId(threadId);
   }, [searchParams]);
+
+  // Fetch user's combined prompts when component mounts
+  useEffect(() => {
+    if (token && !selectedThreadId) {
+      fetchUserPrompts();
+    }
+  }, [token, selectedThreadId]);
+
+  const fetchUserPrompts = async () => {
+    if (!token) return;
+
+    setLoadingPrompts(true);
+    try {
+      const response = await fetch(`${getApiUrl()}/prompts/combined`, {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        setUserPrompts(data.prompts || {});
+        // Initialize tempPrompts with user's prompts
+        setTempPrompts(data.prompts || {});
+      }
+    } catch (error) {
+      console.error("Failed to fetch user prompts:", error);
+    } finally {
+      setLoadingPrompts(false);
+    }
+  };
 
   const {
     sourceType,
@@ -50,6 +87,7 @@ export default function HomeContent({
     setSelectedThreadId(null);
     resetForm();
     setTempPrompts({});
+    setModifiedPrompts({});
     router.push("/");
     closeSidebar(); // Close mobile sidebar
   };
@@ -101,12 +139,52 @@ export default function HomeContent({
                 targets={targets}
                 setTargets={setTargets}
                 isProcessing={isProcessing}
-                handleSubmit={handleSubmit}
+                handleSubmit={(e, customPrompts) => {
+                  // 完全なプロンプト（API取得したもの + カスタム）を送信
+                  const finalPrompts: Record<string, string> = {};
+
+                  targets.forEach((target) => {
+                    const normalizedTarget =
+                      target === "wordpress" ? "blog" : target;
+
+                    // customPromptsが指定されている場合はそれを優先
+                    if (customPrompts && customPrompts[normalizedTarget]) {
+                      finalPrompts[normalizedTarget] =
+                        customPrompts[normalizedTarget];
+                    } else if (customPrompts && customPrompts[target]) {
+                      finalPrompts[normalizedTarget] = customPrompts[target];
+                    } else {
+                      // カスタムがない場合はAPIから取得した完全なプロンプトを使用
+                      if (userPrompts[normalizedTarget]) {
+                        finalPrompts[normalizedTarget] =
+                          userPrompts[normalizedTarget];
+                      } else if (userPrompts[target]) {
+                        finalPrompts[normalizedTarget] = userPrompts[target];
+                      }
+                    }
+                  });
+
+                  handleSubmit(e, finalPrompts);
+                }}
                 isAuthenticated={isAuthenticated}
                 tempPrompts={tempPrompts}
-                onTempPromptsChange={(prompts) =>
-                  setTempPrompts((prev) => ({ ...prev, ...prompts }))
-                }
+                modifiedPrompts={modifiedPrompts}
+                onTempPromptsChange={(prompts) => {
+                  setTempPrompts((prev) => ({ ...prev, ...prompts }));
+                  // 初期値と比較して変更されたプロンプトをマーク
+                  const modified: Record<string, boolean> = {};
+                  Object.keys(prompts).forEach((platform) => {
+                    const normalizedPlatform =
+                      platform === "wordpress" ? "blog" : platform;
+                    const originalPrompt =
+                      userPrompts[normalizedPlatform] ||
+                      userPrompts[platform] ||
+                      "";
+                    const newPrompt = prompts[platform] || "";
+                    modified[platform] = originalPrompt !== newPrompt;
+                  });
+                  setModifiedPrompts((prev) => ({ ...prev, ...modified }));
+                }}
               />
 
               {isProcessing && !results && (

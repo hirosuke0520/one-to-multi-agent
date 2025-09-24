@@ -16,6 +16,7 @@ interface SourceFormProps {
   handleSubmit: (e: FormEvent, customPrompts?: Record<string, string>) => void;
   isAuthenticated?: boolean;
   tempPrompts?: Record<string, string>;
+  modifiedPrompts?: Record<string, boolean>;
   onTempPromptsChange?: (prompts: Record<string, string>) => void;
 }
 
@@ -39,6 +40,7 @@ export const SourceForm = ({
   isProcessing,
   handleSubmit,
   tempPrompts = {},
+  modifiedPrompts = {},
   onTempPromptsChange,
 }: SourceFormProps) => {
   const { data: session } = useSession();
@@ -173,11 +175,11 @@ export const SourceForm = ({
                 className="sr-only"
               />
               <span className="font-medium text-white">{platform.name}</span>
-              {(tempPrompts[platform.id] ||
-                tempPrompts[normalizePlatformId(platform.id)]) && (
+              {(modifiedPrompts[platform.id] ||
+                modifiedPrompts[normalizePlatformId(platform.id)]) && (
                 <div className="mt-2">
-                  <span className="inline-block px-2 py-1 text-xs bg-yellow-600 text-yellow-100 rounded">
-                    カスタムプロンプト設定済み
+                  <span className="inline-block px-2 py-1 text-xs bg-green-600 text-green-100 rounded">
+                    一時プロンプト設定済み
                   </span>
                 </div>
               )}

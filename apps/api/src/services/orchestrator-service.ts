@@ -568,20 +568,16 @@ export class OrchestratorService {
       }
     }
 
+    // デフォルトプロンプトを準備（customPromptsがない場合のフォールバック用）
     const defaultGlobalPrompt =
       this.userSettingsService.getDefaultGlobalCharacterPrompt();
-    let globalPrompt = defaultGlobalPrompt;
+    let defaultGlobalCharacterPrompt = defaultGlobalPrompt;
     if (userId) {
       const savedGlobal =
         await this.userSettingsService.getGlobalCharacterPrompt(userId);
       if (savedGlobal && savedGlobal.trim().length > 0) {
-        globalPrompt = savedGlobal;
-        console.log(`✅ Using custom global character prompt for user ${userId}`);
-      } else {
-        console.log(`📝 Using default global character prompt for user ${userId}`);
+        defaultGlobalCharacterPrompt = savedGlobal;
       }
-    } else {
-      console.log("⚠️ No userId provided, using default global prompt");
     }
 
     const defaultPlatformPrompts = this.promptService.getDefaultPrompts();
@@ -598,34 +594,44 @@ export class OrchestratorService {
         continue;
       }
 
-      let platformPrompt = defaultPlatformPrompts[normalized];
-      if (userId) {
-        const savedPrompt = await this.promptService.getPromptByPlatform(
-          userId,
-          normalized
-        );
-        if (savedPrompt?.prompt && savedPrompt.prompt.trim().length > 0) {
-          platformPrompt = savedPrompt.prompt;
-          console.log(`✅ Using custom ${normalized} prompt for user ${userId}`);
-        } else {
-          console.log(`📝 Using default ${normalized} prompt for user ${userId}`);
-        }
-      }
-
-      const combinedPrompt = `${globalPrompt}\n\n${platformPrompt}`;
+      // リクエストに含まれるプロンプトを優先して使用
       const customPrompt = normalizedCustomPrompts[normalized];
-      const finalPrompt = customPrompt
-        ? `${combinedPrompt}\n\n追加指示:\n${customPrompt}`
-        : combinedPrompt;
 
-      details[target] = {
-        normalizedPlatform: normalized,
-        globalCharacterPrompt: globalPrompt,
-        platformPrompt,
-        combinedPrompt,
-        customPrompt,
-        finalPrompt,
-      };
+      if (customPrompt) {
+        // リクエストにプロンプトが含まれている場合はそれをそのまま使用
+        console.log(`✅ Using request prompt for ${normalized}`);
+        details[target] = {
+          normalizedPlatform: normalized,
+          globalCharacterPrompt: "", // リクエストプロンプトは既に完全なプロンプト
+          platformPrompt: "",
+          combinedPrompt: customPrompt,
+          customPrompt: customPrompt,
+          finalPrompt: customPrompt,
+        };
+      } else {
+        // リクエストにプロンプトがない場合はデフォルトプロンプトを使用
+        console.log(`📝 Using default prompt for ${normalized}`);
+        let platformPrompt = defaultPlatformPrompts[normalized];
+        if (userId) {
+          const savedPrompt = await this.promptService.getPromptByPlatform(
+            userId,
+            normalized
+          );
+          if (savedPrompt?.prompt && savedPrompt.prompt.trim().length > 0) {
+            platformPrompt = savedPrompt.prompt;
+          }
+        }
+
+        const combinedPrompt = `${defaultGlobalCharacterPrompt}\n\n${platformPrompt}`;
+        details[target] = {
+          normalizedPlatform: normalized,
+          globalCharacterPrompt: defaultGlobalCharacterPrompt,
+          platformPrompt,
+          combinedPrompt,
+          customPrompt: undefined,
+          finalPrompt: combinedPrompt,
+        };
+      }
     }
 
     return details;
