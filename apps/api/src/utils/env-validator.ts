@@ -45,7 +45,7 @@ export class EnvValidator {
 
   private static productionRequiredVars = [
     "AUTH_GOOGLE_ID",
-    "AUTH_GOOGLE_SECRET", 
+    "AUTH_GOOGLE_SECRET",
     "AUTH_SECRET",
     "GOOGLE_API_KEY",
   ];

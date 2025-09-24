@@ -85,13 +85,14 @@ export class MetadataServiceSQL {
         await client.query(
           `
           INSERT INTO content_metadata (
-            id, source_type, source_text, original_file_name,
+            id, source_type, source_text, original_file_name, original_file_path,
             file_size, mime_type, duration, user_id, created_at, generated_content, used_prompts
-          ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
+          ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
           ON CONFLICT (id) DO UPDATE SET
             source_type = EXCLUDED.source_type,
             source_text = EXCLUDED.source_text,
             original_file_name = EXCLUDED.original_file_name,
+            original_file_path = EXCLUDED.original_file_path,
             file_size = EXCLUDED.file_size,
             mime_type = EXCLUDED.mime_type,
             duration = EXCLUDED.duration,
@@ -103,6 +104,7 @@ export class MetadataServiceSQL {
             metadata.sourceType,
             metadata.sourceText || null,
             metadata.originalFileName || null,
+            metadata.originalFilePath || null,
             metadata.size || null,
             metadata.mimeType || null,
             metadata.duration || null,
