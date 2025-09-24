@@ -17,31 +17,48 @@
 
 **必須環境変数** (詳細は `.env.example` を参照):
 
-- `AUTH_GOOGLE_ID` / `AUTH_GOOGLE_SECRET` - Google OAuth
-- `AUTH_SECRET` - NextAuth secret
-- `NEXT_PUBLIC_API_URL` - API エンドポイント
-- `DATABASE_URL` - PostgreSQL 接続情報
+- `AUTH_GOOGLE_ID` / `AUTH_GOOGLE_SECRET` - Google OAuth 認証
+- `AUTH_SECRET` - NextAuth.js セッション暗号化キー
+- `NEXT_PUBLIC_API_URL` / `INTERNAL_API_URL` - API エンドポイント
+- `DATABASE_URL` または `DB_*` - PostgreSQL 接続情報
+- `GOOGLE_API_KEY` - Gemini AI API キー（オプション）
 
 ## ✨ 主な機能
 
-- 📝 **文章/音声/動画からの自動コンテンツ生成**
-- 🎯 **複数プラットフォームへの最適化投稿**
-  - Threads (Meta)
-  - WordPress (自社メディア)
-  - YouTube (動画説明・メタデータ)
+- 📝 **マルチメディア対応** - 文章/音声/動画からの自動コンテンツ生成
+- 🎯 **複数プラットフォーム最適化投稿**
+  - Threads (Meta) - 短文形式での投稿
+  - WordPress - 記事形式での投稿
+  - YouTube - 動画説明・メタデータ最適化
   - Twitter/X、Instagram、TikTok（準備済み）
-- 🤖 **AI による自動分析・要約・キーポイント抽出**
-- 🌐 **GCP サービス連携（Vertex AI、Cloud Storage）**
-- 🐳 **ローカル開発環境での完結したワークフロー**
+- 🤖 **AI による高度な処理**
+  - Gemini AI による自動分析・要約・キーポイント抽出
+  - 音声ファイルの文字起こし（STT）
+  - 動画からの音声抽出・処理
+- 👤 **ユーザー管理機能**
+  - Google OAuth による認証
+  - 投稿履歴の管理・閲覧
+  - カスタムプロンプト設定
+  - ユーザー固有の設定管理
+- 🌐 **クラウドとローカルの両対応**
+  - GCP サービス連携（Cloud Storage、Vertex AI）
+  - ローカル開発環境での完結したワークフロー
+  - PostgreSQL データベース
+- 🐳 **開発者フレンドリー**
+  - Docker Compose による簡単セットアップ
+  - TypeScript フルスタック
+  - モジュラー設計
 
 ## 🏗️ アーキテクチャ
 
 ```
 ┌─────────────────┐    ┌─────────────────┐    ┌─────────────────┐
 │   Frontend      │    │   API Server    │    │   AI Services   │
-│   (Next.js)     │───▶│   (Hono)        │───▶│   (Mock/GCP)    │
-│   - Upload UI   │    │   - Orchestrator│    │   - STT         │
-│   - Results     │    │   - Job Manager │    │   - Content Gen │
+│   (Next.js 15)  │───▶│   (Hono + TS)   │───▶│ (Gemini/GCP)    │
+│   - Auth (OAuth)│    │   - Orchestrator│    │   - Content Gen │
+│   - Upload UI   │    │   - Job Manager │    │   - Audio/Video │
+│   - History     │    │   - PostgreSQL  │    │   - Analysis    │
+│   - Settings    │    │   - File Storage│    │                 │
 └─────────────────┘    └─────────────────┘    └─────────────────┘
                                 │
                                 ▼
@@ -50,31 +67,31 @@
                        │   - Threads     │
                        │   - WordPress   │
                        │   - YouTube     │
-                       │   - Twitter     │
+                       │   - Twitter/X   │
                        │   - Instagram   │
                        │   - TikTok      │
                        └─────────────────┘
 
 apps/
-  web/               # Next.js (App Router) - フロントエンド
-  api/               # Hono API + Orchestrator - バックエンド
+  web/               # Next.js 15 (App Router) + NextAuth v5
+  api/               # Hono API + PostgreSQL + Drizzle ORM
 packages/
-  ai/                # LLM/STT クライアント & プロンプト
-  adapters/          # Publisher adapters
-  core/              # 型/ドメイン & パイプライン
-  ui/                # 共有コンポーネント
+  ai/                # Gemini AI クライアント & プロンプト
+  adapters/          # プラットフォーム連携アダプター
+  core/              # 共通型定義
 infra/
   docker/            # Docker Compose設定
-  terraform/         # インフラ設定（将来）
+  sql/               # データベースマイグレーション
 ```
 
 ## 🚀 クイックスタート
 
 ### 📋 必要な環境
 
-- **Node.js 18 以上**
+- **Node.js 18 以上** (推奨: 20+)
+- **PostgreSQL 14+** (Docker で自動セットアップ)
 - **Docker & Docker Compose** (推奨)
-- **gcloud CLI** (GCP 連携用)
+- **gcloud CLI** (GCP 連携用、オプション)
 - **Git**
 
 ### 📥 1. リポジトリのクローン
@@ -315,26 +332,39 @@ curl -X POST http://localhost:8080/orchestrator/process \
 
 ## 🔐 環境変数設定
 
-### .env.local (ローカル開発用)
+### .env (ローカル開発用)
 
 ```env
-# GCP設定
+# Node環境
+NODE_ENV=development
+
+# Web Application設定
+NEXT_PUBLIC_API_URL=http://localhost:8080
+INTERNAL_API_URL=http://api:8080
+AUTH_URL=http://localhost:3000
+
+# NextAuth.js設定
+AUTH_SECRET=your-secret-key-for-session-encryption
+AUTH_GOOGLE_ID=your_google_oauth_client_id
+AUTH_GOOGLE_SECRET=your_google_oauth_client_secret
+
+# データベース設定
+DB_USER=postgres
+DB_HOST=localhost
+DB_NAME=one_to_multi_agent
+DB_PASSWORD=password
+DB_PORT=5432
+
+# ストレージ設定
+STORAGE_TYPE=local
+TEMP_DIR=./temp
+
+# AI設定（オプション）
+GOOGLE_API_KEY=your_gemini_api_key
+
+# GCP設定（本番用）
 GCP_PROJECT_ID=one-to-multi-agent-80339
 GOOGLE_APPLICATION_CREDENTIALS=./gcp-service-account-key.json
-
-# API設定
-NEXT_PUBLIC_API_URL=http://localhost:8080
-
-# プラットフォーム API キー（実際の値に置き換え）
-YOUTUBE_CLIENT_ID=your_client_id
-YOUTUBE_CLIENT_SECRET=your_client_secret
-META_APP_ID=your_app_id
-WP_WEBHOOK_URL=your_webhook_url
-
-# 機能フラグ
-ENABLE_THREADS=true
-ENABLE_YOUTUBE=true
-ENABLE_WORDPRESS=true
 ```
 
 ## 📁 プロジェクト構成
@@ -342,16 +372,24 @@ ENABLE_WORDPRESS=true
 ```
 one-to-multi-agent/
 ├── apps/
-│   ├── web/              # Next.js フロントエンド
-│   └── api/              # Hono API サーバー
+│   ├── web/              # Next.js 15 + NextAuth v5 フロントエンド
+│   │   ├── src/app/      # App Router ページ
+│   │   ├── src/components/ # React コンポーネント
+│   │   └── auth.ts       # NextAuth 設定
+│   └── api/              # Hono API サーバー + PostgreSQL
+│       ├── src/routes/   # API エンドポイント
+│       ├── src/services/ # ビジネスロジック
+│       ├── src/db/       # Drizzle ORM設定
+│       └── storage/      # ローカルファイルストレージ
 ├── packages/
-│   ├── ai/               # AI サービス（STT, LLM）
+│   ├── ai/               # Gemini AI クライアント
 │   ├── adapters/         # プラットフォーム連携
-│   ├── core/             # 共通型・ロジック
-│   └── ui/               # 共有コンポーネント
+│   └── core/             # 共通型定義
 ├── infra/
-│   └── docker/           # Docker設定
-├── setup-gcp.sh          # GCP自動セットアップ
+│   ├── docker/           # Docker Compose設定
+│   └── sql/              # PostgreSQLマイグレーション
+├── scripts/              # セットアップ・デバッグスクリプト
+├── docs/                 # 詳細ドキュメント
 └── README.md
 ```
 
@@ -369,8 +407,17 @@ one-to-multi-agent/
 
 ## 🎉 今後の予定
 
-- [ ] 実際の Google Cloud API 統合
-- [ ] 画像・サムネイル自動生成
+### 近時開発予定
+
+- [ ] 実プラットフォーム API 連携（実際の投稿機能）
 - [ ] スケジュール投稿機能
-- [ ] アナリティクス収集
+- [ ] 画像・サムネイル自動生成（DALL-E 等）
+- [ ] より高度なプロンプトカスタマイズ
+
+### 長期計画
+
+- [ ] アナリティクス・パフォーマンス分析
 - [ ] 動画自動編集機能
+- [ ] コラボレーション機能（チーム管理）
+- [ ] API レート制限・課金管理
+- [ ] モバイルアプリ版
